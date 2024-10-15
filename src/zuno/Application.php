@@ -14,7 +14,7 @@ final class Application extends AppServiceProvider
      *
      * @var string
      */
-    public const VERSION = '2.0';
+    public const VERSION = '1.0.2';
 
     /**
      * Dependency resolver instance.
