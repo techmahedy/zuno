@@ -1,7 +1,7 @@
 {
   "name": "zuno/zuno",
   "type": "package",
-  "description": "The skeleton application for the Zuno framework.",
+  "description": "The Zuno framework",
   "license": "MIT",
   "keywords": [
     "framework",
