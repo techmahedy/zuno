@@ -6,6 +6,7 @@ use Zuno\Route;
 use Zuno\Middleware\Middleware;
 use App\Providers\AppServiceProvider;
 use Zuno\Middleware\Contracts\Middleware as ContractsMiddleware;
+use App\Http\Kernel;
 
 final class Application extends AppServiceProvider
 {
@@ -14,7 +15,7 @@ final class Application extends AppServiceProvider
      *
      * @var string
      */
-    public const VERSION = '1.0.2';
+    public const VERSION = '2.0';
 
     /**
      * Dependency resolver instance.
@@ -43,7 +44,15 @@ final class Application extends AppServiceProvider
      */
     protected Middleware $middleware;
 
+    /**
+     * @var Container
+     */
     protected Container $container;
+
+    /**
+     * @var array
+     */
+    private $globalMiddlewares = [];
 
     /**
      * Constructs the Application instance.
@@ -67,6 +76,50 @@ final class Application extends AppServiceProvider
 
         // Assign service container
         $this->container = $container;
+    }
+
+    /**
+     * Creates and initializes a new Kernel instance.
+     *
+     * This method instantiates a new `Kernel` object and assigns its middleware
+     * to the `$globalMiddlewares` array for later processing.
+     *
+     * @param string $kernel The Kernel class name (not used in the method, might be unnecessary).
+     * @return Application Returns the current Application instance.
+     */
+    public function make(string $kernel): Application
+    {
+        // Instantiate a new Kernel object
+        $kernel = new Kernel;
+
+        // Add the Kernel's middleware to the global middlewares list
+        $this->globalMiddlewares[] = $kernel->middleware;
+
+        // Return the current Application instance for method chaining
+        return $this;
+    }
+
+    /**
+     * Sends the request through all registered global middlewares.
+     *
+     * This method iterates through the `$globalMiddlewares` array and applies each middleware.
+     * It ensures that every middleware implements the `ContractsMiddleware` interface before applying it.
+     * If a middleware does not implement the required interface, an exception is thrown.
+     *
+     * @throws Exception If a middleware does not implement ContractsMiddleware.
+     * @return void
+     */
+    public function send(): void
+    {
+        foreach (array_merge(...$this->globalMiddlewares) as $middleware) {
+            $middlewareInstance = new $middleware();
+            if ($middlewareInstance instanceof ContractsMiddleware) {
+                $this->applyMiddleware($middlewareInstance);
+            } else {
+                // Throw an exception if the middleware is not implements by ContractsMiddleware
+                throw new \Exception("Error Processing Request: Invalid Middleware", 1);
+            }
+        }
     }
 
     /**
