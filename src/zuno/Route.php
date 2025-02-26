@@ -97,13 +97,13 @@ class Route extends Kernel
             if (!isset($this->routeMiddleware[$key])) {
                 throw new \Exception("Middleware [$key] is not defined");
             }
-    
+
             (new $this->routeMiddleware[$key])->handle(
                 new Request,
                 (new Middleware)->start
             );
         }
-    
+
         return $this;
     }
 
