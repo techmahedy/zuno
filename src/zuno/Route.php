@@ -3,7 +3,6 @@
 namespace Zuno;
 
 use App\Http\Kernel;
-use App\TestInterface;
 use Zuno\Request;
 use Zuno\Middleware\Middleware;
 
@@ -88,21 +87,23 @@ class Route extends Kernel
     /**
      * Applies middleware to the route.
      *
-     * @param string $key The middleware key.
+     * @param string|array $key The middleware key.
      * @return Route
      * @throws \Exception If the middleware is not defined.
      */
-    public function middleware(string $key): Route
+    public function middleware(string|array $keys): Route
     {
-        if (!isset($this->routeMiddleware[$key])) {
-            throw new \Exception("Middleware " . '[' . $key . ']' . " is not defined");
+        foreach ((array) $keys as $key) {
+            if (!isset($this->routeMiddleware[$key])) {
+                throw new \Exception("Middleware [$key] is not defined");
+            }
+    
+            (new $this->routeMiddleware[$key])->handle(
+                new Request,
+                (new Middleware)->start
+            );
         }
-
-        (new $this->routeMiddleware[$key])->handle(
-            new Request,
-            (new Middleware)->start
-        );
-
+    
         return $this;
     }
 
