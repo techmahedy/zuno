@@ -94,13 +94,17 @@ class Route extends Kernel
     public function middleware(string|array $keys): Route
     {
         foreach ((array) $keys as $key) {
-            if (!isset($this->routeMiddleware[$key])) {
-                throw new \Exception("Middleware [$key] is not defined");
+            [$name, $params] = array_pad(explode(':', $key, 2), 2, null);
+            $params = $params ? explode(',', $params) : [];
+
+            if (!isset($this->routeMiddleware[$name])) {
+                throw new \Exception("Middleware [$name] is not defined");
             }
 
-            (new $this->routeMiddleware[$key])->handle(
+            (new $this->routeMiddleware[$name])->handle(
                 new Request,
-                (new Middleware)->start
+                (new Middleware)->start,
+                ...$params
             );
         }
 
