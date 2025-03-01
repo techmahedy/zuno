@@ -6,6 +6,7 @@ use Zuno\Session;
 use Zuno\Redirect;
 use Zuno\Controllers\Controller;
 use Zuno\Route;
+use Zuno\Config;
 
 /**
  * Renders a view with the given data.
