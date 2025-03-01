@@ -1,6 +1,6 @@
 <?php
 
-namespace Zuno;
+namespace Zuno\Logger;
 
 use Monolog\Level;
 use Monolog\Logger;
@@ -33,22 +33,29 @@ class Log implements ResettableInterface
     public function logReader(): Logger
     {
         // Instantiate the logger with a specific channel name
-        $this->logger = new Logger('mii_logger');
+        $channel = env('LOG_CHANNEL', 'daily');
+        $this->logger = new Logger($channel);
 
         // Define the log file path
-        $path = 'storage/logs';
+        $path = getcwd() . '/storage/logs';
 
         // Ensure the log directory exists; create it if it doesn't
         if (!is_dir($path)) {
-            mkdir($path, 0775, true); // Create directory with permissions
-            touch($path . '/mii.log'); // Create the log file if it does not exist
+            mkdir($path, 0775, true);
         }
 
-        // Add a handler to write logs to a file with DEBUG level
-        $this->logger->pushHandler(new StreamHandler($path . '/mii.log', Level::Debug));
+        // Define log file path based on the channel
+        $logFile = $channel !== 'daily'
+            ? $path . '/zuno.log'
+            : $path . '/' . date('Y_m_d') . '_zuno.log';
 
-        // Add a handler to send logs to the FirePHP console
-        $this->logger->pushHandler(new FirePHPHandler());
+        // Ensure the log file exists (create it if it doesn't)
+        if (!is_file($logFile)) {
+            touch($logFile);
+        }
+
+        // Add a handler to write logs to the file with DEBUG level
+        $this->logger->pushHandler(new StreamHandler($logFile, Level::Debug));
 
         // Return the configured logger instance
         return $this->logger;

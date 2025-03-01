@@ -2,6 +2,8 @@
 
 namespace Zuno;
 
+use Zuno\File;
+
 class Request extends Rule
 {
     /**

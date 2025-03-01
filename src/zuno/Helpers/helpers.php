@@ -1,6 +1,6 @@
 <?php
 
-use Zuno\Log as Reader;
+use Zuno\Logger\Log as Reader;
 use Zuno\Request;
 use Zuno\Session;
 use Zuno\Redirect;
@@ -91,4 +91,21 @@ function route(string $name, mixed $params = []): ?string
     $routePath = Route::route($name, $params);
 
     return $routePath ? $basePath . '/' . ltrim($routePath, '/') : null;
+}
+
+/**
+ * Retrieve a configuration value by key.
+ *
+ * This function acts as a shorthand to retrieve a configuration value from the 
+ * `Config` class. It calls the `Config::get()` method to fetch the value for 
+ * a given configuration key. If the key does not exist, it returns `null`.
+ *
+ * @param string $key The configuration key to retrieve.
+ * @return string|null The configuration value associated with the key, or null if not found.
+ */
+function config(string $key): ?string
+{
+    // Fetch the configuration value using the Config::get method.
+    // If the value is not found, it returns null.
+    return Config::get($key) ?? null;
 }

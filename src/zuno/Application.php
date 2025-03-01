@@ -2,6 +2,7 @@
 
 namespace Zuno;
 
+use Zuno\Config;
 use Zuno\Route;
 use Zuno\Middleware\Middleware;
 use App\Providers\AppServiceProvider;
@@ -11,20 +12,13 @@ use App\Http\Kernel;
 final class Application extends AppServiceProvider
 {
     /**
-     * The version of the application.
-     *
-     * @var string
-     */
-    public const VERSION = '2.0';
-
-    /**
      * Dependency resolver instance.
      *
      * This property holds the result of the dependency registration.
      *
      * @var mixed
      */
-    public mixed $resolveDependency;
+    public $resolveDependency;
 
     /**
      * The route handler instance.
@@ -76,6 +70,10 @@ final class Application extends AppServiceProvider
 
         // Assign service container
         $this->container = $container;
+
+        // Loading application configuration files
+        Config::initialize();
+        Config::loadFromCache();
     }
 
     /**
