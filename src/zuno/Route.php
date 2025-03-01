@@ -30,6 +30,13 @@ class Route extends Kernel
     public Request $request;
 
     /**
+     * Holds the registered named routes.
+     *
+     * @var array<string, string>
+     */
+    protected static array $namedRoutes = [];
+
+    /**
      * Constructor to initialize the request property.
      *
      * @param Request $request The request instance.
@@ -82,6 +89,57 @@ class Route extends Kernel
         self::$routes['post'][$path] = $callback;
 
         return $this;
+    }
+
+    /**
+     * Assigns a name to the last registered route.
+     *
+     * @param string $name The name for the route.
+     * @return Route
+     */
+    public function name(string $name): Route
+    {
+        $method = $this->request->getMethod();
+        $lastRoute = array_key_last(self::$routes[$method]);
+
+        if ($lastRoute) {
+            self::$namedRoutes[$name] = $lastRoute;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Generates a URL for a named route.
+     *
+     * @param string $name The route name.
+     * @param array $params The parameters for the route.
+     * @return string|null The generated URL or null if the route doesn't exist.
+     */
+    public static function route(string $name, mixed $params = []): ?string
+    {
+        if (!isset(self::$namedRoutes[$name])) {
+            return null;
+        }
+
+        $route = self::$namedRoutes[$name];
+
+        // If $params is not an array, convert it into an associative array
+        if (!is_array($params)) {
+            // If the route contains only one parameter placeholder, use 0 as the key
+            if (preg_match('/\{(\w+)(:[^}]+)?}/', $route, $matches)) {
+                $params = [$matches[1] => $params];
+            } else {
+                $params = [$params]; // Fallback in case there's no named parameter
+            }
+        }
+
+        // Replace route parameters with actual values
+        foreach ($params as $key => $value) {
+            $route = preg_replace('/\{' . $key . '(:[^}]+)?}/', $value, $route, 1);
+        }
+
+        return $route;
     }
 
     /**

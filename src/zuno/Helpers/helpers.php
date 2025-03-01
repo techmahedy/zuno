@@ -5,6 +5,7 @@ use Zuno\Request;
 use Zuno\Session;
 use Zuno\Redirect;
 use Zuno\Controllers\Controller;
+use Zuno\Route;
 
 /**
  * Renders a view with the given data.
@@ -68,4 +69,26 @@ function fake(): \Faker\Generator
     $faker = Faker\Factory::create();
 
     return $faker;
+}
+
+/**
+ * Generates a full URL for a named route.
+ *
+ * @param string $name The route name.
+ * @param mixed $params The parameters for the route.
+ * @return string|null The generated URL or null if the route doesn't exist.
+ */
+function route(string $name, mixed $params = []): ?string
+{
+    // Determine HTTP or HTTPS scheme
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+
+    // Get the base URL dynamically
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost'; // Fallback to 'localhost' if not set
+    $basePath = rtrim($scheme . '://' . $host, '/');
+
+    // Get the route path
+    $routePath = Route::route($name, $params);
+
+    return $routePath ? $basePath . '/' . ltrim($routePath, '/') : null;
 }
