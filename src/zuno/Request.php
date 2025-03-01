@@ -19,6 +19,23 @@ class Request extends Rule
     public array $input = [];
 
     /**
+     * Stores files uploaded with the request.
+     *
+     * @var array<string, mixed>
+     */
+    public array $files = [];
+
+    public function __construct()
+    {
+        $this->files = $_FILES; // Store uploaded files
+    }
+
+    public function __get(string $name): mixed
+    {
+        return $this->input($name) ?? $this->file($name);
+    }
+
+    /**
      * Retrieves the current request URI path.
      *
      * @return string The decoded URI path.
@@ -94,7 +111,7 @@ class Request extends Rule
             $this->input = $this->all();
         }
 
-        return $this->input[$param] ?? $this->input;
+        return $this->input[$param] ?? null;
     }
 
     /**
@@ -105,7 +122,6 @@ class Request extends Rule
      */
     public function has(string $param): bool
     {
-        // Populate the input array if it's empty
         if (empty($this->input)) {
             $this->input = $this->all();
         }
@@ -146,5 +162,19 @@ class Request extends Rule
     public function getRouteParam(string $param, mixed $default = null): mixed
     {
         return $this->params[$param] ?? $default;
+    }
+
+    /**
+     * Retrieves a specific file's information from the request.
+     *
+     * @param string $param The file parameter name.
+     * @return File|null The File object or null if the file doesn't exist.
+     */
+    public function file(string $param): ?File
+    {
+        if (isset($this->files[$param]) && $this->files[$param]['error'] === UPLOAD_ERR_OK) {
+            return new File($this->files[$param]);
+        }
+        return null;
     }
 }
