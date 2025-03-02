@@ -2,6 +2,7 @@
 
 namespace Zuno;
 
+use Zuno\Request;
 use Zuno\Database\DB;
 
 class Rule
@@ -17,6 +18,9 @@ class Rule
     {
         $errors = [];
         $input = request()->all();
+
+        // Flash input requested data
+        Request::flashInput($input);
 
         if (is_array($input)) {
             foreach ($rules as $fieldName => $value) {
@@ -52,7 +56,7 @@ class Rule
                             break;
 
                         case 'unique':
-                            if (!$this->isRecordUnique($input, $fieldName, $ruleValue)) {
+                            if ($this->isRecordUnique($input, $fieldName, $ruleValue)) {
                                 $errors[$fieldName]['unique'] = $this->_removeUnderscore(ucfirst($fieldName)) . " field already exists.";
                             }
                             break;
@@ -66,6 +70,7 @@ class Rule
             foreach ($errors as $key => $error) {
                 session()->flash($key, $error);
             }
+
             return redirect()->back()->withInput()->withErrors($errors);
         }
 

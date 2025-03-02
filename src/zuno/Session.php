@@ -24,8 +24,9 @@ class Session
      */
     public function get(string $key): mixed
     {
-        $message = $_SESSION[$key] ?? null; // Use null coalescing operator to handle non-existent keys
-        unset($_SESSION[$key]); // Remove the item from session
+        $message = $_SESSION[$key] ?? null;
+        unset($_SESSION[$key]);
+
         return $message;
     }
 
@@ -37,6 +38,6 @@ class Session
      */
     public function has(string $key): mixed
     {
-        return $_SESSION[$key] ?? false; // Return value or false if key does not exist
+        return $_SESSION[$key] ?? false;
     }
 }

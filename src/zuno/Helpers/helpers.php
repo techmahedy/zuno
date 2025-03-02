@@ -1,12 +1,13 @@
 <?php
 
-use Zuno\Logger\Log as Reader;
-use Zuno\Request;
 use Zuno\Session;
-use Zuno\Redirect;
-use Zuno\Controllers\Controller;
 use Zuno\Route;
+use Zuno\Request;
+use Zuno\Redirect;
+use Zuno\Logger\Log as Reader;
+use Zuno\Controllers\Controller;
 use Zuno\Config;
+use Zuno\Auth\Security\Auth;
 
 /**
  * Renders a view with the given data.
@@ -38,6 +39,19 @@ function redirect(): Redirect
 function request(): Request
 {
     return new Request();
+}
+
+// This function retrieves the old input value for a given key from the session.
+// It acts as a wrapper around the Request's `old()` method.
+/**
+ * @param mixed $key
+ * @return string|null
+ */
+function old($key): ?string
+{
+    // Calls the `old()` method on the Request class to get the stored old input for the given key.
+    // The Request class should store and return the old input values that were flashed to the session.
+    return Request::old($key);
 }
 
 /**
@@ -109,4 +123,9 @@ function config(string $key): ?string
     // Fetch the configuration value using the Config::get method.
     // If the value is not found, it returns null.
     return Config::get($key) ?? null;
+}
+
+function isAuthenticated(): bool
+{
+    return Auth::check();
 }

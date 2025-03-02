@@ -15,7 +15,7 @@ class Installer
         copy('.env.example', '.env');
         
         // Example: Copy .config.example to .config
-        copy('config.example', 'config.php');
+        copy('.config.example', '.config');
 
         // Additional setup steps...
     }

@@ -197,12 +197,12 @@ class Controller
     /**
      * Escape variables.
      *
-     * @param string $string
+     * @param string|array|null $string
      * @param string $charset
      *
      * @return string
      */
-    public function e(string|array $string, $charset = null): string
+    public function e(string|array|null $string, $charset = null): string
     {
         if (is_array($string)) {
             $string = implode(' ', $string);

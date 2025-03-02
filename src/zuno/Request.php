@@ -29,7 +29,7 @@ class Request extends Rule
 
     public function __construct()
     {
-        $this->files = $_FILES; // Store uploaded files
+        $this->files = $_FILES;
     }
 
     public function __get(string $name): mixed
@@ -178,5 +178,45 @@ class Request extends Rule
             return new File($this->files[$param]);
         }
         return null;
+    }
+
+    /**
+     * Stores the provided input data in the session for later retrieval.
+     * This is typically used when you want to "flash" the input data for the next request,
+     * such as when a form submission fails, and you want to retain the user's input.
+     *
+     * @param array|null $data The input data to store in the session. If null, it clears the stored input.
+     * 
+     * @return void
+     */
+    public static function flashInput(?array $data)
+    {
+        // Store the provided input data in the session under the 'input' key
+        // This allows the data to be accessible across subsequent requests
+        $_SESSION['input'] = $data;
+    }
+
+    /**
+     * Retrieves the old input data that was previously stored in the session.
+     * If a specific key is provided, it will return the value associated with that key;
+     * otherwise, it returns all stored input data.
+     *
+     * This is commonly used to retain form values between requests, for example, 
+     * when a form is redisplayed after a validation failure.
+     *
+     * @param string|null $key The key for a specific input value (e.g., 'email'). If null, returns all stored input.
+     *
+     * @return string|null
+     *
+     */
+    public static function old(?string $key = null): ?string
+    {
+        // Retrieve the stored input data
+        $input = $_SESSION['input'] ?? [];
+
+        // If a specific key is requested, get that value
+        $value = $key ? ($input[$key] ?? null) : $input;
+
+        return $value;
     }
 }

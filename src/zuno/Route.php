@@ -37,6 +37,16 @@ class Route extends Kernel
     protected static array $namedRoutes = [];
 
     /**
+     * @var string|null The path of the current route being defined.
+     */
+    protected ?string $currentRoutePath = null;
+
+    /**
+     * @var array<string> The middleware keys for the current route.
+     */
+    protected static array $routeMiddlewares = [];
+
+    /**
      * Constructor to initialize the request property.
      *
      * @param Request $request The request instance.
@@ -73,6 +83,7 @@ class Route extends Kernel
     public function getRoute($path, $callback): Route
     {
         self::$routes['get'][$path] = $callback;
+        $this->currentRoutePath = $path;
 
         return $this;
     }
@@ -87,6 +98,7 @@ class Route extends Kernel
     public function postRoute($path, $callback): Route
     {
         self::$routes['post'][$path] = $callback;
+        $this->currentRoutePath = $path;
 
         return $this;
     }
@@ -99,11 +111,8 @@ class Route extends Kernel
      */
     public function name(string $name): Route
     {
-        $method = $this->request->getMethod();
-        $lastRoute = array_key_last(self::$routes[$method]);
-
-        if ($lastRoute) {
-            self::$namedRoutes[$name] = $lastRoute;
+        if ($this->currentRoutePath) {
+            self::$namedRoutes[$name] = $this->currentRoutePath;
         }
 
         return $this;
@@ -151,19 +160,10 @@ class Route extends Kernel
      */
     public function middleware(string|array $keys): Route
     {
-        foreach ((array) $keys as $key) {
-            [$name, $params] = array_pad(explode(':', $key, 2), 2, null);
-            $params = $params ? explode(',', $params) : [];
-
-            if (!isset($this->routeMiddleware[$name])) {
-                throw new \Exception("Middleware [$name] is not defined");
+        if ($this->currentRoutePath) {
+            foreach ((array) $keys as $key) {
+                self::$routeMiddlewares[$this->currentRoutePath] = (array) $keys;
             }
-
-            (new $this->routeMiddleware[$name])->handle(
-                new Request,
-                (new Middleware)->start,
-                ...$params
-            );
         }
 
         return $this;
@@ -215,6 +215,50 @@ class Route extends Kernel
     }
 
     /**
+     * Get the current route middleware
+     * @return array|null
+     */
+    public function getCurrentRouteMiddleware(): ?array
+    {
+        $url = $this->request->getPath();
+        $method = $this->request->getMethod();
+        $routes = self::$routes[$method] ?? [];
+
+        foreach ($routes as $route => $callback) {
+            $routeRegex = "@^" . preg_replace('/\{(\w+)(:[^}]+)?}/', '([^/]+)', $route) . "$@";
+            if (preg_match($routeRegex, $url)) {
+                return self::$routeMiddlewares[$route] ?? null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Applies middleware to the route
+     * @return Route
+     */
+    public function applyRouteMiddleware(): Route
+    {
+        foreach ($this->getCurrentRouteMiddleware() as $key) {
+            [$name, $params] = array_pad(explode(':', $key, 2), 2, null);
+            $params = $params ? explode(',', $params) : [];
+
+            if (!isset($this->routeMiddleware[$name])) {
+                throw new \Exception("Middleware [$name] is not defined");
+            }
+
+            (new $this->routeMiddleware[$name])->handle(
+                new Request,
+                (new Middleware)->start,
+                ...$params
+            );
+        }
+
+        return $this;
+    }
+
+    /**
      * Resolves and executes the route callback with the middleware and dependencies.
      *
      * @param Middleware $middleware The middleware instance.
@@ -225,11 +269,14 @@ class Route extends Kernel
      */
     public function resolve(?Middleware $middleware, $container): mixed
     {
-        // Process middleware
-        $middleware->handle($this->request);
+        // Process Route middleware
+        $this->applyRouteMiddleware();
 
         // Get the callback (controller and method) for the route
         $callback = $this->getCallback();
+
+        // Process Global middleware
+        $middleware->handle($this->request);
 
         if (!$callback) {
             throw new \Exception("Route path " . '[' . $this->request->getPath() . ']' . " is not defined");

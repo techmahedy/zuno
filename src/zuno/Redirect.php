@@ -20,15 +20,8 @@ class Redirect
      */
     public function url(string $url, int $statusCode = 302): void
     {
-        // Check if headers have not been sent yet
-        if (!headers_sent()) {
-            // Perform the redirect by setting the Location header
-            header('Location: ' . $url, true, $statusCode);
-            exit(); // Terminate the script to ensure no further code is executed
-        } else {
-            // Inform the user if headers have already been sent
-            echo "Headers have already been sent. Unable to redirect.";
-        }
+        header('Location: ' . $url, true, $statusCode);
+        exit(); // Terminate the script to ensure no furt
     }
 
     /**
