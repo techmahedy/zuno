@@ -16,7 +16,5 @@ class Installer
         
         // Example: Copy .config.example to .config
         copy('config.example', 'config.php');
-
-        // Additional setup steps...
     }
 }
