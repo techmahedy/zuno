@@ -23,7 +23,6 @@
     "vlucas/phpdotenv": "^5.5",
     "illuminate/database": "^11.0",
     "illuminate/events": "^11.0",
-    "spatie/ignition": "^1.11",
     "illuminate/collections": "^11.0",
     "monolog/monolog": "^3.0",
     "symfony/var-dumper": "^7.1",
