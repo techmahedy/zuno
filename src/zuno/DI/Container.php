@@ -1,6 +1,6 @@
 <?php
 
-namespace Zuno;
+namespace Zuno\DI;
 
 class Container
 {

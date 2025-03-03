@@ -1,6 +1,8 @@
 <?php
 
-namespace Zuno;
+namespace Zuno\Http;
+
+use Zuno\Session\Input;
 
 /**
  * Handles HTTP redirects.
@@ -21,7 +23,9 @@ class Redirect
     public function url(string $url, int $statusCode = 302): void
     {
         header('Location: ' . $url, true, $statusCode);
-        exit(); // Terminate the script to ensure no furt
+        Input::clear();
+
+        exit();
     }
 
     /**
@@ -33,9 +37,9 @@ class Redirect
      */
     public function back(): never
     {
-        // Use the HTTP_REFERER server variable to get the previous URL
-        $referer = $_SERVER['HTTP_REFERER'] ?? '/'; // Default to '/' if HTTP_REFERER is not set
+        $referer = $_SERVER['HTTP_REFERER'] ?? '/';
         header('Location: ' . $referer);
-        exit(); // Terminate the script to ensure no further code is executed
+
+        exit();
     }
 }

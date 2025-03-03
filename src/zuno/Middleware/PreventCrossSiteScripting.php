@@ -6,7 +6,7 @@ use Closure;
 use Zuno\Http\Request;
 use Zuno\Middleware\Contracts\Middleware;
 
-class CsrfTokenMiddleware implements Middleware
+class PreventCrossSiteScripting implements Middleware
 {
     /**
      * Handles an incoming request and verifies the CSRF token.
@@ -21,9 +21,12 @@ class CsrfTokenMiddleware implements Middleware
      */
     public function __invoke(Request $request, Closure $next): mixed
     {
-        if ($request->isPost() && !$request->has('csrf_token')) {
-            throw new \Exception("CSRF token not found");
-        }
+        $input = $request->all();
+        array_walk_recursive($input, function (&$input) {
+            $input = strip_tags($input);
+        });
+
+        collect($request)->merge($input);
 
         return $next($request);
     }

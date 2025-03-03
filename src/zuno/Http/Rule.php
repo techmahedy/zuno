@@ -1,9 +1,9 @@
 <?php
 
-namespace Zuno;
+namespace Zuno\Http;
 
-use Zuno\Request;
 use Zuno\Database\DB;
+use Zuno\Session\Input;
 
 class Rule
 {
@@ -20,7 +20,7 @@ class Rule
         $input = request()->all();
 
         // Flash input requested data
-        Request::flashInput($input);
+        Input::flashInput($input);
 
         if (is_array($input)) {
             foreach ($rules as $fieldName => $value) {
@@ -66,11 +66,9 @@ class Rule
         }
 
         if (!empty($errors)) {
-            session()->flash('errors', $errors);
             foreach ($errors as $key => $error) {
-                session()->flash($key, $error);
+                flash()->set($key, implode(',', (array)$error));
             }
-
             return redirect()->back()->withInput()->withErrors($errors);
         }
 
@@ -172,6 +170,7 @@ class Rule
     public function _getRuleSuffix(string $string): ?string
     {
         $arr = explode(":", $string);
+
         return $arr[1] ?? null;
     }
 }

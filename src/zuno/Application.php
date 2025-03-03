@@ -2,11 +2,12 @@
 
 namespace Zuno;
 
-use Zuno\Config;
-use Zuno\Route;
+use Zuno\Support\Route;
 use Zuno\Middleware\Middleware;
-use App\Providers\AppServiceProvider;
 use Zuno\Middleware\Contracts\Middleware as ContractsMiddleware;
+use Zuno\DI\Container;
+use Zuno\Config\Config;
+use App\Providers\AppServiceProvider;
 use App\Http\Kernel;
 
 final class Application extends AppServiceProvider
@@ -87,13 +88,10 @@ final class Application extends AppServiceProvider
      */
     public function make(string $kernel): Application
     {
-        // Instantiate a new Kernel object
         $kernel = new Kernel;
 
-        // Add the Kernel's middleware to the global middlewares list
         $this->globalMiddlewares[] = $kernel->middleware;
 
-        // Return the current Application instance for method chaining
         return $this;
     }
 

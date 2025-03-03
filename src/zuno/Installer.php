@@ -13,7 +13,7 @@ class Installer
 
         // Example: Copy .env.example to .env
         copy('.env.example', '.env');
-        
+
         // Example: Copy .config.example to .config
         copy('config.example', 'config.php');
     }

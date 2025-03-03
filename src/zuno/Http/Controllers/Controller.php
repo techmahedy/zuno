@@ -1,6 +1,6 @@
 <?php
 
-namespace Zuno\Controllers;
+namespace Zuno\Http\Controllers;
 
 use Closure;
 use Countable;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Zuno;
+namespace Zuno\Config;
 
 class Config
 {

@@ -3,14 +3,14 @@
 namespace Zuno\Middleware;
 
 use Closure;
-use Zuno\Request;
+use Zuno\Http\Request;
 use Zuno\Middleware\Contracts\Middleware as ContractsMiddleware;
 
 class Middleware
 {
     /**
      * Closure that handles the request processing.
-     * 
+     *
      * @var Closure(Request): Request
      */
     public Closure $start;

@@ -1,13 +1,14 @@
 <?php
 
-use Zuno\Session;
-use Zuno\Route;
-use Zuno\Request;
-use Zuno\Redirect;
+use Zuno\Support\Route;
+use Zuno\Http\Request;
+use Zuno\Http\Redirect;
 use Zuno\Logger\Log as Reader;
-use Zuno\Controllers\Controller;
-use Zuno\Config;
+use Zuno\Http\Controllers\Controller;
+use Zuno\Config\Config;
 use Zuno\Auth\Security\Auth;
+use Zuno\Session\FlashMessage;
+use Zuno\Session\Input;
 
 /**
  * Renders a view with the given data.
@@ -51,17 +52,7 @@ function old($key): ?string
 {
     // Calls the `old()` method on the Request class to get the stored old input for the given key.
     // The Request class should store and return the old input values that were flashed to the session.
-    return Request::old($key);
-}
-
-/**
- * Creates a new session instance for handling user sessions.
- *
- * @return	Session A new instance of the Session class.
- */
-function session(): Session
-{
-    return new Session();
+    return Input::old($key);
 }
 
 /**
@@ -118,14 +109,29 @@ function route(string $name, mixed $params = []): ?string
  * @param string $key The configuration key to retrieve.
  * @return string|null The configuration value associated with the key, or null if not found.
  */
-function config(string $key): ?string
+function config(string $key): null|string|array
 {
     // Fetch the configuration value using the Config::get method.
     // If the value is not found, it returns null.
     return Config::get($key) ?? null;
 }
 
+/**
+ * Check if the user is authenticated.
+ *
+ * @return bool Returns true if the user is logged in, otherwise false.
+ */
 function isAuthenticated(): bool
 {
     return Auth::check();
+}
+
+/**
+ * Create a new flash message instance.
+ *
+ * @return FlashMessage Returns a new FlashMessage object.
+ */
+function flash(): FlashMessage
+{
+    return new FlashMessage();
 }

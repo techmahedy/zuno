@@ -1,9 +1,9 @@
 <?php
 
-namespace Zuno;
+namespace Zuno\Support;
 
 use App\Http\Kernel;
-use Zuno\Request;
+use Zuno\Http\Request;
 use Zuno\Middleware\Middleware;
 
 class Route extends Kernel
@@ -259,121 +259,134 @@ class Route extends Kernel
     }
 
     /**
-     * Resolves and executes the route callback with the middleware and dependencies.
+     * Resolves and executes the route callback with middleware and dependencies.
      *
-     * @param Middleware $middleware The middleware instance.
-     * @param Container $container The container container for resolving dependencies.
+     * @param Middleware|null $middleware The middleware instance.
+     * @param Container $container The container for resolving dependencies.
      * @return mixed The result of the callback execution.
      * @throws \ReflectionException If there is an issue with reflection.
-     * @throws \Exception If the route callback is not defined.
+     * @throws \Exception If the route callback is not defined or dependency resolution fails.
      */
     public function resolve(?Middleware $middleware, $container): mixed
     {
-        // Process Route middleware
         $this->applyRouteMiddleware();
-
-        // Get the callback (controller and method) for the route
-        $callback = $this->getCallback();
-
-        // Process Global middleware
-        $middleware->handle($this->request);
-
-        if (!$callback) {
-            throw new \Exception("Route path " . '[' . $this->request->getPath() . ']' . " is not defined");
+        if ($middleware) {
+            $middleware->handle($this->request);
         }
 
-        // Extract route parameters (e.g., from the URL)
+        $callback = $this->getCallback();
+        if (!$callback) {
+            throw new \Exception("Route '{$this->request->getPath()}' is not defined.");
+        }
+
         $routeParams = $this->request->getRouteParams();
-        $resolveDependencies = [];
 
         if (is_array($callback)) {
-            $controllerClass = $callback[0];
-            $actionMethod = $callback[1];
-
-            $reflector = new \ReflectionClass($controllerClass);
-
-            // Resolve constructor dependencies
-            $constructor = $reflector->getConstructor();
-            $constructorDependencies = [];
-
-            if ($constructor) {
-                $constructorParameters = $constructor->getParameters();
-
-                foreach ($constructorParameters as $parameter) {
-                    $paramType = $parameter->getType();
-                    $isBuiltin = $paramType && $paramType->isBuiltin();
-
-                    if ($paramType && !$isBuiltin) {
-                        $resolvedClass = $paramType->getName();
-
-                        // Handle interfaces and resolve through the container
-                        if (interface_exists($resolvedClass)) {
-                            if (!$container->has($resolvedClass)) {
-                                throw new \Exception("Cannot resolve interface '$resolvedClass'");
-                            }
-                            $constructorDependencies[] = $container->get($resolvedClass);
-                        }
-                        // Handle Eloquent models or other class dependencies
-                        elseif (is_subclass_of($resolvedClass, \Illuminate\Database\Eloquent\Model::class)) {
-                            $modelId = $routeParams[$parameter->getName()] ?? null;
-                            if ($modelId) {
-                                $constructorDependencies[] = $resolvedClass::findOrFail($modelId);
-                            } else {
-                                $constructorDependencies[] = $container->get($resolvedClass);
-                            }
-                        } else {
-                            $constructorDependencies[] = $container->get($resolvedClass);
-                        }
-                    } else {
-                        throw new \Exception("Cannot resolve built-in type for constructor parameter '{$parameter->getName()}'");
-                    }
-                }
-            }
-
-            // Instantiate the controller with constructor dependencies
-            $controllerInstance = new $controllerClass(...$constructorDependencies);
-
-            // Resolve method (action) parameters
-            $method = $reflector->getMethod($actionMethod);
-            $methodParameters = $method->getParameters();
-
-            foreach ($methodParameters as $parameter) {
-                $paramName = $parameter->getName();
-                $paramType = $parameter->getType();
-                $isBuiltin = $paramType && $paramType->isBuiltin();
-
-                if ($paramType && !$isBuiltin) {
-                    $resolvedClass = $paramType->getName();
-
-                    // Handle models (e.g., User)
-                    if (is_subclass_of($resolvedClass, \Illuminate\Database\Eloquent\Model::class)) {
-                        // Check if route has a parameter (like an ID for the model)
-                        $modelId = $routeParams[$paramName] ?? null;
-                        if ($modelId) {
-                            $resolveDependencies[] = $resolvedClass::findOrFail($modelId);
-                        } else {
-                            // Otherwise, resolve the model without an ID
-                            $resolveDependencies[] = $container->get($resolvedClass);
-                        }
-                    } else {
-                        // For other classes (like Request, etc.)
-                        $resolveDependencies[] = $container->get($resolvedClass);
-                    }
-                } else if (isset($routeParams[$paramName])) {
-                    // If the parameter is in the route parameters (like a scalar ID)
-                    $resolveDependencies[] = $routeParams[$paramName];
-                } else if ($parameter->isOptional()) {
-                    // Handle optional parameters with default values
-                    $resolveDependencies[] = $parameter->getDefaultValue();
-                } else {
-                    throw new \Exception("Cannot resolve parameter '$paramName' in route callback");
-                }
-            }
-
-            // Call the controller action with resolved dependencies
-            return call_user_func([$controllerInstance, $actionMethod], ...$resolveDependencies);
+            return $this->resolveControllerAction($callback, $container, $routeParams);
         }
 
         return call_user_func($callback, ...array_filter($this->urlParams));
+    }
+
+    /**
+     * Resolves and executes a controller action with dependencies.
+     *
+     * @param array $callback The controller callback (e.g., [Controller::class, 'action']).
+     * @param Container $container The container for resolving dependencies.
+     * @param array $routeParams The route parameters.
+     * @return mixed The result of the controller action execution.
+     * @throws \ReflectionException If there is an issue with reflection.
+     * @throws \Exception If dependency resolution fails.
+     */
+    private function resolveControllerAction(array $callback, $container, array $routeParams): mixed
+    {
+        [$controllerClass, $actionMethod] = $callback;
+        $reflector = new \ReflectionClass($controllerClass);
+
+        $constructorDependencies = $this->resolveConstructorDependencies($reflector, $container, $routeParams);
+        $controllerInstance = new $controllerClass(...$constructorDependencies);
+
+        $actionDependencies = $this->resolveActionDependencies($reflector, $actionMethod, $container, $routeParams);
+
+        return call_user_func([$controllerInstance, $actionMethod], ...$actionDependencies);
+    }
+
+    /**
+     * Resolves constructor dependencies for a controller.
+     *
+     * @param \ReflectionClass $reflector The reflection class of the controller.
+     * @param Container $container The container for resolving dependencies.
+     * @param array $routeParams The route parameters.
+     * @return array The resolved constructor dependencies.
+     * @throws \Exception If dependency resolution fails.
+     */
+    private function resolveConstructorDependencies(
+        \ReflectionClass $reflector,
+        $container,
+        array $routeParams
+    ): array {
+        $constructor = $reflector->getConstructor();
+        if (!$constructor) {
+            return [];
+        }
+
+        return $this->resolveParameters($constructor->getParameters(), $container, $routeParams);
+    }
+
+    /**
+     * Resolves action dependencies for a controller method.
+     *
+     * @param \ReflectionClass $reflector The reflection class of the controller.
+     * @param string $actionMethod The name of the action method.
+     * @param Container $container The container for resolving dependencies.
+     * @param array $routeParams The route parameters.
+     * @return array The resolved action dependencies.
+     * @throws \ReflectionException If there is an issue with reflection.
+     * @throws \Exception If dependency resolution fails.
+     */
+    private function resolveActionDependencies(
+        \ReflectionClass $reflector,
+        string $actionMethod,
+        $container,
+        array $routeParams
+    ): array {
+        $method = $reflector->getMethod($actionMethod);
+
+        return $this->resolveParameters($method->getParameters(), $container, $routeParams);
+    }
+
+    /**
+     * Resolves parameters for a method or constructor.
+     *
+     * @param array $parameters The parameters to resolve.
+     * @param Container $container The container for resolving dependencies.
+     * @param array $routeParams The route parameters.
+     * @return array The resolved parameters.
+     * @throws \Exception If dependency resolution fails.
+     */
+    private function resolveParameters(array $parameters, $container, array $routeParams): array
+    {
+        $dependencies = [];
+        foreach ($parameters as $parameter) {
+            $paramName = $parameter->getName();
+            $paramType = $parameter->getType();
+
+            if ($paramType && !$paramType->isBuiltin()) {
+                $resolvedClass = $paramType->getName();
+                if (is_subclass_of($resolvedClass, \Illuminate\Database\Eloquent\Model::class)) {
+                    $modelId = $routeParams[$paramName] ?? null;
+                    $dependencies[] = $modelId ? $resolvedClass::findOrFail($modelId) : $container->get($resolvedClass);
+                } else {
+                    $dependencies[] = $container->get($resolvedClass);
+                }
+            } elseif (isset($routeParams[$paramName])) {
+                $dependencies[] = $routeParams[$paramName];
+            } elseif ($parameter->isOptional()) {
+                $dependencies[] = $parameter->getDefaultValue();
+            } else {
+                throw new \Exception("Cannot resolve parameter '$paramName' in route callback");
+            }
+        }
+        return $dependencies;
     }
 }
