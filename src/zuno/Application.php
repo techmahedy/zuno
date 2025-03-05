@@ -3,7 +3,6 @@
 namespace Zuno;
 
 use Zuno\Support\Route;
-use Zuno\Middleware\Middleware;
 use Zuno\DI\Container;
 use Zuno\Config\Config;
 use App\Providers\AppServiceProvider;
@@ -13,15 +12,6 @@ use Zuno\Http\Response;
 final class Application extends AppServiceProvider
 {
     /**
-     * Dependency resolver instance.
-     *
-     * This property holds the result of the dependency registration.
-     *
-     * @var mixed
-     */
-    public $resolveDependency;
-
-    /**
      * The route handler instance.
      *
      * This property holds an instance of the Route class responsible for routing.
@@ -29,15 +19,6 @@ final class Application extends AppServiceProvider
      * @var Route
      */
     public Route $route;
-
-    /**
-     * The middleware handler instance.
-     *
-     * This property holds an instance of the Middleware class responsible for handling middleware.
-     *
-     * @var Middleware
-     */
-    protected Middleware $middleware;
 
     /**
      * @var Container
@@ -50,14 +31,15 @@ final class Application extends AppServiceProvider
      * Initializes the dependency resolver, route handler, and middleware handler.
      *
      * @param Route $route
-     * @param Middleware $middleware
      * @param Container $container
      */
-    public function __construct(Route $route, Middleware $middleware, Container $container)
+    public function __construct(Route $route, Container $container)
     {
         $this->route = $route;
-        $this->middleware = $middleware;
         $this->container = $container;
+
+        // Bootstraping application services
+        $this->register();
 
         // Loading application configuration files
         if (!file_exists(storage_path('cache/config.php'))) {
@@ -76,7 +58,12 @@ final class Application extends AppServiceProvider
     public function run(): void
     {
         try {
-            echo $this->route->resolve($this->container);
+            $response = $this->route->resolve($this->container);
+            if ($response instanceof \Zuno\Http\Response) {
+                $response->send();
+            } else {
+                echo $response;
+            }
         } catch (HttpException $exception) {
             Response::dispatchHttpException($exception);
         }

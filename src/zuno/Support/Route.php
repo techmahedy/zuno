@@ -255,10 +255,7 @@ class Route extends Kernel
             $request = new Request();
 
             $next = fn(Request $request) => new Response();
-            $response = $middleware->handle($request, $next, ...$params);
-
-            // Send the response to the client
-            $response->send();
+            $middleware->handle($request, $next, ...$params);
         }
 
         return $this;

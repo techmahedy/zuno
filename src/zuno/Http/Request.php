@@ -3,12 +3,17 @@
 namespace Zuno\Http;
 
 use Zuno\Support\File;
-use Zuno\Http\Rule;
 use Zuno\Http\Support\RequestParser;
+use Zuno\Http\Support\RequestHelper;
+use Zuno\Http\Rule;
 
-class Request extends Rule
+/**
+ * The Request class encapsulates all HTTP request-related data and functionality.
+ * It handles query parameters, form data, uploaded files, headers, and more.
+ */
+class Request
 {
-    use RequestParser;
+    use RequestParser, RequestHelper, Rule;
 
     /**
      * Stores query and post parameters.
@@ -31,11 +36,21 @@ class Request extends Rule
      */
     public array $files = [];
 
+    /**
+     * Constructor for the Request class.
+     * Initializes request data from superglobals ($_GET, $_POST, $_FILES, $_SERVER).
+     */
     public function __construct()
     {
         $this->files = $_FILES;
     }
 
+    /**
+     * Magic method to allow dynamic access to input or file data.
+     *
+     * @param string $name The name of the input or file.
+     * @return mixed The input value or File object, or null if not found.
+     */
     public function __get(string $name): mixed
     {
         return $this->input($name) ?? $this->file($name);
@@ -84,58 +99,6 @@ class Request extends Rule
     }
 
     /**
-     * Retrieves all input data, sanitizing it based on the request method.
-     *
-     * @return array<string, mixed> Sanitized input data.
-     */
-    public function all(): array
-    {
-        $body = [];
-        $inputSource = $this->getMethod() === 'get' ? $_GET : $_POST;
-
-        foreach ($inputSource as $key => $value) {
-            $body[$key] = filter_input(
-                $this->getMethod() === 'get' ? INPUT_GET : INPUT_POST,
-                $key,
-                FILTER_SANITIZE_SPECIAL_CHARS
-            );
-        }
-
-        return $body;
-    }
-
-    /**
-     * Retrieves a specific input parameter or all input data.
-     *
-     * @param string $param The parameter to retrieve.
-     * @return mixed The input value if the parameter exists, otherwise the whole input array.
-     */
-    public function input(string $param): mixed
-    {
-        // Populate the input array if it's empty
-        if (empty($this->input)) {
-            $this->input = $this->all();
-        }
-
-        return $this->input[$param] ?? null;
-    }
-
-    /**
-     * Checks if a specific parameter exists in the input data.
-     *
-     * @param string $param The parameter to check.
-     * @return bool True if the parameter exists, false otherwise.
-     */
-    public function has(string $param): bool
-    {
-        if (empty($this->input)) {
-            $this->input = $this->all();
-        }
-
-        return array_key_exists($param, $this->input);
-    }
-
-    /**
      * Sets route parameters for the request.
      *
      * @param array<string, mixed> $params The route parameters.
@@ -144,7 +107,6 @@ class Request extends Rule
     public function setRouteParams(array $params): self
     {
         $this->params = $params;
-
         return $this;
     }
 

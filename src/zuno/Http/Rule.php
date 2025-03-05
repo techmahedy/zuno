@@ -2,22 +2,25 @@
 
 namespace Zuno\Http;
 
-use Zuno\Database\DB;
 use Zuno\Session\Input;
+use Zuno\Http\Response;
+use Zuno\Http\Support\ValidationRules;
 
-class Rule
+trait Rule
 {
+    use ValidationRules;
+
     /**
      * Validate the input data against the given rules.
      *
      * @access public
      * @param array $rules Associative array of field names and their validation rules.
-     * @return null|array|\Zuno\Http\Redirect
+     * @return null|array|\Zuno\Http\Response
      */
-    public function validate(array $rules): null|array|\Zuno\Http\Redirect
+    public function sanitize(array $rules): array|Response
     {
         $errors = [];
-        $input = request()->all();
+        $input = $this->all();
 
         // Flash input requested data
         Input::flashInput();
@@ -30,149 +33,32 @@ class Rule
                     $ruleValue = $this->_getRuleSuffix($rule);
                     $rule = $this->_removeRuleSuffix($rule);
 
-                    switch ($rule) {
-                        case 'required':
-                            if ($this->isEmptyFieldRequired($input, $fieldName)) {
-                                $errors[$fieldName]['required'] = $this->_removeUnderscore(ucfirst($fieldName)) . " field is required.";
-                            }
-                            break;
+                    $errorMessage = $this->sanitizeUserRequest($input, $fieldName, $rule, $ruleValue);
 
-                        case 'email':
-                            if (!$this->isEmailValid($input, $fieldName)) {
-                                $errors[$fieldName]['email'] = $this->_removeUnderscore(ucfirst($fieldName)) . " field is invalid.";
-                            }
-                            break;
-
-                        case 'min':
-                            if ($this->isLessThanMin($input, $fieldName, $ruleValue)) {
-                                $errors[$fieldName]['min'] = $this->_removeUnderscore(ucfirst($fieldName)) . " field must be at least " . $ruleValue . " characters.";
-                            }
-                            break;
-
-                        case 'max':
-                            if ($this->isMoreThanMax($input, $fieldName, $ruleValue)) {
-                                $errors[$fieldName]['max'] = $this->_removeUnderscore(ucfirst($fieldName)) . " field must not exceed " . $ruleValue . " characters.";
-                            }
-                            break;
-
-                        case 'unique':
-                            if ($this->isRecordUnique($input, $fieldName, $ruleValue)) {
-                                $errors[$fieldName]['unique'] = $this->_removeUnderscore(ucfirst($fieldName)) . " field already exists.";
-                            }
-                            break;
+                    if ($errorMessage) {
+                        $errors[$fieldName][$rule] = $errorMessage;
                     }
                 }
             }
         }
 
         if (!empty($errors)) {
+            if (method_exists($this, 'setErrors')) {
+                $this->setErrors($errors);
+            }
+
             foreach ($errors as $key => $error) {
                 flash()->set($key, implode(',', (array)$error));
             }
-            return redirect()->back()->withInput()->withErrors($errors);
+
+            redirect()->back()->withInput()->withErrors($errors)->send();
+            exit;
         }
-        unset($_SESSION['flash_messages']);
-        unset($_SESSION['persisted_errors']);
 
-        return null;
-    }
+        if (method_exists($this, 'setPassedData')) {
+            $this->setPassedData($input);
+        }
 
-    /**
-     * Check if a required field is empty.
-     *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @return bool
-     */
-    public function isEmptyFieldRequired(array $input, string $fieldName): bool
-    {
-        return empty($input[$fieldName]);
-    }
-
-    /**
-     * Check if a field value is less than the minimum length.
-     *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @param int $value The minimum length.
-     * @return bool
-     */
-    public function isLessThanMin(array $input, string $fieldName, int $value): bool
-    {
-        return strlen($input[$fieldName]) < $value;
-    }
-
-    /**
-     * Check if a field value exceeds the maximum length.
-     *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @param int $value The maximum length.
-     * @return bool
-     */
-    public function isMoreThanMax(array $input, string $fieldName, int $value): bool
-    {
-        return strlen($input[$fieldName]) > $value;
-    }
-
-    /**
-     * Check if a record is unique.
-     *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @param string $value The table name.
-     * @return bool
-     */
-    public function isRecordUnique(array $input, string $fieldName, string $value): bool
-    {
-        return DB::table($value)->where($fieldName, '=', $input[$fieldName])->exists();
-    }
-
-    /**
-     * Validate if the email is valid.
-     *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @return bool
-     */
-    public function isEmailValid(array $input, string $fieldName): bool
-    {
-        $email = $input[$fieldName] ?? '';
-        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
-    }
-
-    /**
-     * Remove underscores from a string and capitalize words.
-     *
-     * @param string $string The input string.
-     * @return string
-     */
-    public function _removeUnderscore(string $string): string
-    {
-        return str_replace("_", " ", $string);
-    }
-
-    /**
-     * Remove the suffix from a rule string.
-     *
-     * @param string $string The rule string.
-     * @return string
-     */
-    public function _removeRuleSuffix(string $string): string
-    {
-        return explode(":", $string)[0];
-    }
-
-    /**
-     * Get the suffix from a rule string.
-     *
-     * @param string $string The rule string.
-     * @return string|null
-     */
-    public function _getRuleSuffix(string $string): ?string
-    {
-        $arr = explode(":", $string);
-
-        return $arr[1] ?? null;
+        return $input;
     }
 }

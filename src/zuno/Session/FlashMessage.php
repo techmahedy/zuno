@@ -32,8 +32,9 @@ class FlashMessage
     public static function allMessage(): array
     {
         if (isset($_SESSION['flash_messages'])) {
-            $messages = $_SESSION['flash_messages'];
-            unset($_SESSION['flash_messages']); // Clear messages after retrieval
+            $_SESSION['peek_messages'] = $_SESSION['flash_messages'];
+            $messages = $_SESSION['peek_messages'];
+            unset($_SESSION['flash_messages']);
             return $messages;
         }
 
@@ -120,7 +121,7 @@ class FlashMessage
      */
     public static function peek(string $key): ?string
     {
-        return $_SESSION['flash_messages'][$key] ?? null;
+        return $_SESSION['peek_messages'][$key] ?? null;
     }
 
     /**
