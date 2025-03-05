@@ -2,9 +2,10 @@
 
 namespace Zuno\Middleware;
 
-use Closure;
-use Zuno\Http\Request;
 use Zuno\Middleware\Contracts\Middleware;
+use Zuno\Http\Response;
+use Zuno\Http\Request;
+use Closure;
 
 class PreventCrossSiteScripting implements Middleware
 {
@@ -16,12 +17,13 @@ class PreventCrossSiteScripting implements Middleware
      *
      * @param Request $request The incoming request instance.
      * @param Closure $next The next middleware or request handler.
-     * @return mixed The result of the next middleware or request handler.
+     * @return Response The result of the next middleware or request handler.
      * @throws \Exception If the CSRF token is not present in a POST request.
      */
-    public function __invoke(Request $request, Closure $next): mixed
+    public function __invoke(Request $request, Closure $next): Response
     {
         $input = $request->all();
+
         array_walk_recursive($input, function (&$input) {
             $input = strip_tags($input);
         });

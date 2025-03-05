@@ -37,7 +37,7 @@ class Log implements ResettableInterface
         $this->logger = new Logger($channel);
 
         // Define the log file path
-        $path = getcwd() . '/storage/logs';
+        $path = base_path() . '/storage/logs';
 
         // Ensure the log directory exists; create it if it doesn't
         if (!is_dir($path)) {

@@ -38,7 +38,7 @@ class MakeControllerCommand extends Command
         $namespace = 'App\\Http\\Controllers' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
 
         // Construct the file path by replacing slashes with directory separators
-        $filePath = getcwd() . '/app/Http/Controllers/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php';
+        $filePath = base_path() . '/app/Http/Controllers/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php';
 
         // Check if the controller already exists
         if (file_exists($filePath)) {

@@ -5,17 +5,28 @@ namespace Zuno\Session;
 class Input
 {
     /**
+     * Set a value in the session.
+     *
+     * @param string $key The key to set.
+     * @param mixed $value The value to store.
+     *
+     * @return void
+     */
+    public static function set(string $key, $value): void
+    {
+        $_SESSION[$key] = $value;
+    }
+
+    /**
      * Stores the provided input data in the session for later retrieval.
      * This is typically used when you want to "flash" the input data for the next request,
      * such as when a form submission fails, and you want to retain the user's input.
      *
-     * @param array|null $data The input data to store in the session. If null, it clears the stored input.
-     *
      * @return void
      */
-    public static function flashInput(?array $data)
+    public static function flashInput()
     {
-        $_SESSION['input'] = $data;
+        $_SESSION['input'] = $_POST + $_GET;;
     }
 
     /**
@@ -33,7 +44,7 @@ class Input
      */
     public static function old(?string $key = null): ?string
     {
-        $input = $_SESSION['input'] ?? [];
+        $input = $_SESSION['input'] ?? null;
 
         if ($key) {
             return $input[$key] ?? null;

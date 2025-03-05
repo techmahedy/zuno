@@ -4,6 +4,7 @@ namespace Zuno\Middleware;
 
 use Closure;
 use Zuno\Http\Request;
+use Zuno\Http\Response;
 use Zuno\Middleware\Contracts\Middleware;
 
 class CsrfTokenMiddleware implements Middleware
@@ -16,13 +17,13 @@ class CsrfTokenMiddleware implements Middleware
      *
      * @param Request $request The incoming request instance.
      * @param Closure $next The next middleware or request handler.
-     * @return mixed The result of the next middleware or request handler.
-     * @throws \Exception If the CSRF token is not present in a POST request.
+     * @return Zuno\Http\Response
+     * @throws \Exception
      */
-    public function __invoke(Request $request, Closure $next): mixed
+    public function __invoke(Request $request, Closure $next): Response
     {
         if ($request->isPost() && !$request->has('csrf_token')) {
-            throw new \Exception("CSRF token not found");
+            throw new \Exception("CSRF Token not found", 422);
         }
 
         return $next($request);

@@ -2,150 +2,112 @@
 
 namespace Zuno\Http;
 
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\RedirectResponse;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Zuno\Http\Exceptions\HttpException;
 
-class Response
+class Response extends Request
 {
-    /**
-     * Return a new JSON response from the application.
-     *
-     * @param mixed $data
-     * @param int $status
-     * @param array $headers
-     * @param int $encodingOptions
-     * @return JsonResponse
-     */
-    public static function json(
-        mixed $data = [],
-        int $status = 200,
-        array $headers = [],
-        int $encodingOptions = 0
-    ): JsonResponse {
-        return new JsonResponse($data, $status, $headers, $encodingOptions);
-    }
+    protected string $body;
 
-    /**
-     * Return a new streamed response from the application.
-     *
-     * @param callable $callback
-     * @param int $status
-     * @param array $headers
-     * @return StreamedResponse
-     */
-    public static function stream(callable $callback, int $status = 200, array $headers = []): StreamedResponse
+    protected int $statusCode;
+
+    protected array $headers = [];
+
+    public function __construct(string $body = '', int $statusCode = 200, array $headers = [])
     {
-        return new StreamedResponse($callback, $status, $headers);
+        $this->body = $body;
+        $this->statusCode = $statusCode;
+        $this->headers = $headers;
     }
 
-    /**
-     * Return a new streamed download response from the application.
-     *
-     * @param callable $callback
-     * @param string $filename
-     * @param array $headers
-     * @param string|null $disposition
-     * @return StreamedResponse
-     */
-    public static function streamDownload(
-        callable $callback,
-        string $filename,
-        array $headers = [],
-        string $disposition = 'attachment'
-    ): StreamedResponse {
-        $response = new StreamedResponse($callback, 200, $headers);
-
-        $response->headers->set('Content-Disposition', $response->headers->makeDisposition($disposition, $filename));
-
-        return $response;
-    }
-
-    /**
-     * Create a new file download response.
-     *
-     * @param \SplFileInfo|string $file
-     * @param string|null $name
-     * @param array $headers
-     * @param string|null $disposition
-     * @return BinaryFileResponse
-     */
-    public static function download(
-        \SplFileInfo|string $file,
-        string $name = null,
-        array $headers = [],
-        string $disposition = 'attachment'
-    ): BinaryFileResponse {
-        $response = new BinaryFileResponse($file, 200, $headers, true, $disposition);
-
-        if (!is_null($name)) {
-            $response->setContentDisposition($disposition, $name);
-        }
-
-        return $response;
-    }
-
-    /**
-     * Create a new redirect response to the given path.
-     *
-     * @param string $path
-     * @param int $status
-     * @param array $headers
-     * @return RedirectResponse
-     */
-    public static function redirect(string $path, int $status = 302, array $headers = []): RedirectResponse
+    public function getBody(): string
     {
-        return new RedirectResponse($path, $status, $headers);
+        return $this->body;
     }
 
-    /**
-     * Create a new redirect response to the given URL.
-     *
-     * @param string $url
-     * @param int $status
-     * @param array $headers
-     * @return RedirectResponse
-     */
-    public static function redirectUrl(string $url, int $status = 302, array $headers = []): RedirectResponse
+    public function setStatusCode(int $statusCode): int
     {
-        return static::redirect($url, $status, $headers);
+        return $this->statusCode = $statusCode;
     }
 
-    /**
-     * Create a new redirect response back to the previous location.
-     *
-     * @param int $status
-     * @param array $headers
-     * @return RedirectResponse
-     */
-    public static function redirectBack(int $status = 302, array $headers = []): RedirectResponse
+    public function getStatusCode(): int
     {
-        return static::redirect($_SERVER['HTTP_REFERER'] ?? '/', $status, $headers);
+        return $this->statusCode;
     }
 
-    /**
-     * Set the content type header.
-     *
-     * @param string $contentType
-     * @return SymfonyResponse
-     */
-    public function contentType(string $contentType): SymfonyResponse
-    {
-        $this->headers->set('Content-Type', $contentType);
-
-        return $this;
-    }
-
-    /**
-     * Get the Symfony Response Header Bag instance.
-     *
-     * @return ResponseHeaderBag
-     */
-    public function headers(): ResponseHeaderBag
+    public function getHeaders(): array
     {
         return $this->headers;
+    }
+
+    public function setHeader(string $name, string $value): void
+    {
+        $this->headers[$name] = $value;
+    }
+
+    public function send(): void
+    {
+        http_response_code($this->statusCode);
+
+        foreach ($this->headers() as $name => $value) {
+            header("$name: $value");
+        }
+        echo $this->body;
+    }
+
+    /**
+     * Handle an HTTP exception and return a response.
+     *
+     * @param HttpException $exception The HTTP exception.
+     * @return void
+     */
+    public static function dispatchHttpException(HttpException $exception): void
+    {
+        $statusCode = $exception->getStatusCode();
+        $message = $exception->getMessage() ?: 'An error occurred.';
+
+        // Set the HTTP response code
+        http_response_code($statusCode);
+
+        // Render a JSON response for API requests
+        if (self::isJsonRequest()) {
+            echo json_encode([
+                'error' => [
+                    'code' => $statusCode,
+                    'message' => $message,
+                ],
+            ]);
+            return;
+        }
+
+        // Render an HTML error page for web requests
+        self::renderErrorPage($statusCode, $message);
+    }
+
+    /**
+     * Check if the request expects a JSON response.
+     *
+     * @return bool
+     */
+    protected static function isJsonRequest(): bool
+    {
+        return isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false;
+    }
+
+    /**
+     * Render an HTML error page.
+     *
+     * @param int $statusCode The HTTP status code.
+     * @param string $message The error message.
+     * @return void
+     */
+    protected static function renderErrorPage(int $statusCode, string $message): void
+    {
+        $errorPage = base_path() . "/vendor/zuno/zuno/src/zuno/Support/View/errors/{$statusCode}.blade.php";
+
+        if (file_exists($errorPage)) {
+            include $errorPage;
+        } else {
+            throw new HttpException($statusCode, $message);
+        }
     }
 }

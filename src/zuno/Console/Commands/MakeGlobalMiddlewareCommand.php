@@ -33,7 +33,7 @@ class MakeGlobalMiddlewareCommand extends Command
         $namespace = 'App\\Http\\Middleware' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
 
         // Construct the file path correctly inside app/Http/Middleware/
-        $filePath = getcwd() . '/app/Http/Middleware/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php';
+        $filePath = base_path() . '/app/Http/Middleware/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php';
 
         // Check if the middleware already exists
         if (file_exists($filePath)) {
@@ -68,6 +68,7 @@ namespace {$namespace};
 
 use Closure;
 use Zuno\Http\Request;
+use Zuno\Http\Response;
 use Zuno\Middleware\Contracts\Middleware;
 
 class {$className} implements Middleware
@@ -78,9 +79,9 @@ class {$className} implements Middleware
      *
      * @param Request \$request
      * @param Closure \$next
-     * @return mixed
+     * @return Zuno\Http\Response
      */
-    public function __invoke(Request \$request, Closure \$next): mixed
+    public function __invoke(Request \$request, Closure \$next): Response
     {
         return \$next(\$request);
     }

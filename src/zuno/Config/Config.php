@@ -2,7 +2,7 @@
 
 namespace Zuno\Config;
 
-class Config
+final class Config
 {
     /**
      * Stores loaded configuration data.
@@ -23,8 +23,7 @@ class Config
      */
     public static function initialize(): void
     {
-        // Initialize the cache file path here
-        self::$cacheFile = getcwd() . '/storage/cache/config.php';
+        self::$cacheFile = base_path() . '/storage/cache/config.php';
     }
 
     /**
@@ -43,7 +42,7 @@ class Config
      */
     public static function loadAll(): void
     {
-        foreach (glob(getcwd() . '/config/*.php') as $file) {
+        foreach (glob(base_path() . '/config/*.php') as $file) {
             $fileName = basename($file, '.php');
             self::$config[$fileName] = include $file;
         }

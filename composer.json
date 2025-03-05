@@ -26,6 +26,7 @@
     "monolog/monolog": "^3.0",
     "robmorgan/phinx": "^0.16.1",
     "symfony/console": "^7.2",
+    "symfony/process": "^7.2",
     "symfony/var-dumper": "^7.1",
     "vlucas/phpdotenv": "^5.5"
   },

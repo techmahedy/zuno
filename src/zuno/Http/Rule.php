@@ -12,15 +12,15 @@ class Rule
      *
      * @access public
      * @param array $rules Associative array of field names and their validation rules.
-     * @return array|null Validation errors or null if no errors.
+     * @return null|array|\Zuno\Http\Redirect
      */
-    public function validate(array $rules): ?array
+    public function validate(array $rules): null|array|\Zuno\Http\Redirect
     {
         $errors = [];
         $input = request()->all();
 
         // Flash input requested data
-        Input::flashInput($input);
+        Input::flashInput();
 
         if (is_array($input)) {
             foreach ($rules as $fieldName => $value) {
@@ -71,6 +71,8 @@ class Rule
             }
             return redirect()->back()->withInput()->withErrors($errors);
         }
+        unset($_SESSION['flash_messages']);
+        unset($_SESSION['persisted_errors']);
 
         return null;
     }

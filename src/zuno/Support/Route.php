@@ -2,9 +2,11 @@
 
 namespace Zuno\Support;
 
-use App\Http\Kernel;
-use Zuno\Http\Request;
 use Zuno\Middleware\Middleware;
+use Zuno\Http\Response;
+use Zuno\Http\Request;
+use App\Http\Kernel;
+use Zuno\DI\Container;
 
 class Route extends Kernel
 {
@@ -238,9 +240,9 @@ class Route extends Kernel
      * Applies middleware to the route
      * @return Route
      */
-    public function applyRouteMiddleware(): Route
+    private function applyRouteMiddleware(): Route
     {
-        foreach ($this->getCurrentRouteMiddleware() as $key) {
+        foreach ($this->getCurrentRouteMiddleware() ?? [] as $key) {
             [$name, $params] = array_pad(explode(':', $key, 2), 2, null);
             $params = $params ? explode(',', $params) : [];
 
@@ -248,36 +250,45 @@ class Route extends Kernel
                 throw new \Exception("Middleware [$name] is not defined");
             }
 
-            (new $this->routeMiddleware[$name])->handle(
-                new Request,
-                (new Middleware)->start,
-                ...$params
-            );
+            $middlewareClass = $this->routeMiddleware[$name];
+            $middleware = new $middlewareClass();
+            $request = new Request();
+
+            $next = fn(Request $request) => new Response();
+            $response = $middleware->handle($request, $next, ...$params);
+
+            // Send the response to the client
+            $response->send();
         }
 
         return $this;
     }
 
+    private function applyWebMiddleware(): void
+    {
+        foreach ($this->middleware ?? [] as $middlewareClass) {
+            $middleware = new $middlewareClass();
+            $next = fn(Request $request) => new Response();
+            $middleware($this->request, $next);
+        }
+    }
+
     /**
      * Resolves and executes the route callback with middleware and dependencies.
      *
-     * @param Middleware|null $middleware The middleware instance.
      * @param Container $container The container for resolving dependencies.
      * @return mixed The result of the callback execution.
      * @throws \ReflectionException If there is an issue with reflection.
      * @throws \Exception If the route callback is not defined or dependency resolution fails.
      */
-    public function resolve(?Middleware $middleware, $container): mixed
+    public function resolve(Container $container): mixed
     {
+        $this->applyWebMiddleware();
+
         $this->applyRouteMiddleware();
-        if ($middleware) {
-            $middleware->handle($this->request);
-        }
 
         $callback = $this->getCallback();
-        if (!$callback) {
-            throw new \Exception("Route '{$this->request->getPath()}' is not defined.");
-        }
+        if (!$callback) abort(404);
 
         $routeParams = $this->request->getRouteParams();
 

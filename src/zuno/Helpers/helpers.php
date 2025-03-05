@@ -1,79 +1,93 @@
 <?php
 
 use Zuno\Support\Route;
+use Zuno\Http\Support\Abort;
+use Zuno\Session\Input;
+use Zuno\Session\FlashMessage;
+use Zuno\Logger\Log as Reader;
 use Zuno\Http\Request;
 use Zuno\Http\Redirect;
-use Zuno\Logger\Log as Reader;
 use Zuno\Http\Controllers\Controller;
 use Zuno\Config\Config;
 use Zuno\Auth\Security\Auth;
-use Zuno\Session\FlashMessage;
-use Zuno\Session\Input;
 
 /**
  * Renders a view with the given data.
  *
- * @param	string $view The name of the view file to render.
- * @param	array  $data An associative array of data to pass to the view (default is an empty array).
- * @return	mixed The rendered view output.
+ * @param string $view The name of the view file to render.
+ * @param array $data An associative array of data to pass to the view (default is an empty array).
+ * @return mixed The rendered view output.
  */
 function view($view, $data = []): mixed
 {
-    return (new Controller())->render($view, $data);
+    static $instance = null;
+    if ($instance === null) {
+        $instance = new Controller();
+    }
+    return $instance->render($view, $data);
 }
 
 /**
  * Creates a new redirect instance for handling HTTP redirects.
  *
- * @return	Redirect A new instance of the Redirect class.
+ * @return Redirect A new instance of the Redirect class.
  */
 function redirect(): Redirect
 {
-    return new Redirect();
+    static $instance = null;
+    if ($instance === null) {
+        $instance = new Redirect();
+    }
+    return $instance;
 }
 
 /**
  * Creates a new request instance to handle HTTP requests.
  *
- * @return	Request A new instance of the Request class.
+ * @return Request A new instance of the Request class.
  */
 function request(): Request
 {
-    return new Request();
+    static $instance = null;
+    if ($instance === null) {
+        $instance = new Request();
+    }
+    return $instance;
 }
 
-// This function retrieves the old input value for a given key from the session.
-// It acts as a wrapper around the Request's `old()` method.
 /**
- * @param mixed $key
- * @return string|null
+ * Retrieves the old input value for a given key from the session.
+ *
+ * @param mixed $key The key to retrieve the old input for.
+ * @return string|null The old input value or null if not found.
  */
 function old($key): ?string
 {
-    // Calls the `old()` method on the Request class to get the stored old input for the given key.
-    // The Request class should store and return the old input values that were flashed to the session.
     return Input::old($key);
 }
 
 /**
  * Creates and returns a logger instance for logging messages.
  *
- * @return	\Monolog\Logger An instance of the Monolog Logger.
+ * @return \Monolog\Logger An instance of the Monolog Logger.
  */
 function logger(): \Monolog\Logger
 {
-    return (new Reader())->logReader();
+    static $instance = null;
+    if ($instance === null) {
+        $instance = new Reader();
+    }
+    return $instance->logReader();
 }
 
 /**
  * Creates and returns a Faker generator instance for generating fake data.
  *
- * @return	\Faker\Generator An instance of the Faker Generator.
+ * @return \Faker\Generator An instance of the Faker Generator.
  */
 function fake(): \Faker\Generator
 {
     $faker = Faker\Factory::create();
-
     return $faker;
 }
 
@@ -86,33 +100,21 @@ function fake(): \Faker\Generator
  */
 function route(string $name, mixed $params = []): ?string
 {
-    // Determine HTTP or HTTPS scheme
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-
-    // Get the base URL dynamically
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost'; // Fallback to 'localhost' if not set
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $basePath = rtrim($scheme . '://' . $host, '/');
-
-    // Get the route path
     $routePath = Route::route($name, $params);
-
     return $routePath ? $basePath . '/' . ltrim($routePath, '/') : null;
 }
 
 /**
  * Retrieve a configuration value by key.
  *
- * This function acts as a shorthand to retrieve a configuration value from the 
- * `Config` class. It calls the `Config::get()` method to fetch the value for 
- * a given configuration key. If the key does not exist, it returns `null`.
- *
  * @param string $key The configuration key to retrieve.
- * @return string|null The configuration value associated with the key, or null if not found.
+ * @return string|array|null The configuration value associated with the key, or null if not found.
  */
 function config(string $key): null|string|array
 {
-    // Fetch the configuration value using the Config::get method.
-    // If the value is not found, it returns null.
     return Config::get($key) ?? null;
 }
 
@@ -133,5 +135,114 @@ function isAuthenticated(): bool
  */
 function flash(): FlashMessage
 {
-    return new FlashMessage();
+    static $instance = null;
+    if ($instance === null) {
+        $instance = new FlashMessage();
+    }
+    return $instance;
+}
+
+/**
+ * Get the base path of the application.
+ *
+ * @param string $path An optional path to append to the base path.
+ * @return string The full base path.
+ */
+function base_path(string $path = ''): string
+{
+    if (php_sapi_name() === 'cli' || defined('STDIN')) {
+        return realpath(__DIR__ . '/../../../../../../') . ($path ? DIRECTORY_SEPARATOR . $path : '');
+    }
+
+    $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 3);
+    return dirname($documentRoot) . ($path ? DIRECTORY_SEPARATOR . $path : '');
+}
+
+/**
+ * Get the base URL of the application.
+ *
+ * @param string $path An optional path to append to the base URL.
+ * @return string The full base URL.
+ */
+function base_url(string $path = ''): string
+{
+    if (php_sapi_name() === 'cli' || defined('STDIN')) {
+        $appUrl = getenv('APP_URL') ?: 'http://localhost';
+        return rtrim($appUrl, '/') . ($path ? '/' . ltrim($path, '/') : '');
+    }
+
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $base = $scheme . '://' . $host;
+
+    return rtrim($base, '/') . ($path ? '/' . ltrim($path, '/') : '');
+}
+
+/**
+ * Get the storage path of the application.
+ *
+ * @param string $path An optional path to append to the storage path.
+ * @return string The full storage path.
+ */
+function storage_path(string $path = ''): string
+{
+    return base_url('storage') . ($path ? DIRECTORY_SEPARATOR . $path : '');
+}
+
+/**
+ * Get the public path of the application.
+ *
+ * @param string $path An optional path to append to the public path.
+ * @return string The full public path.
+ */
+function public_path(string $path = ''): string
+{
+    return base_url('public') . ($path ? DIRECTORY_SEPARATOR . $path : '');
+}
+
+/**
+ * Get the resources path of the application.
+ *
+ * @param string $path An optional path to append to the resources path.
+ * @return string The full resources path.
+ */
+function resource_path(string $path = ''): string
+{
+    return base_url('resources') . ($path ? DIRECTORY_SEPARATOR . $path : '');
+}
+
+/**
+ * Generate the URL for an asset in the public directory.
+ *
+ * @param string $path The path to the asset relative to the public directory.
+ * @return string The full URL to the asset.
+ */
+function enqueue(string $path = ''): string
+{
+    return base_url('public') . ($path ? '/' . ltrim($path, '/') : '');
+}
+
+/**
+ * Abort the request with a specific HTTP status code and optional message.
+ *
+ * @param int $code The HTTP status code.
+ * @param string $message The optional error message.
+ * @throws HttpException
+ */
+function abort(int $code, string $message = ''): void
+{
+    Abort::abort($code, $message);
+}
+
+/**
+ * Abort the request if a condition is true.
+ *
+ * @param bool $condition The condition to check.
+ * @param int $code The HTTP status code.
+ * @param string $message The optional error message.
+ * @throws HttpException
+ */
+function abort_if(bool $condition, int $code, string $message = ''): void
+{
+    Abort::abortIf($condition, $code, $message);
 }

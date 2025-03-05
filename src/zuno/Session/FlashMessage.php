@@ -96,7 +96,7 @@ class FlashMessage
     }
 
     /**
-     * Get a specific flash message by key.
+     * Get a specific flash message by key and remove it from the session.
      *
      * @param string $key The key of the message.
      * @return string|null The message content, or null if not found.
@@ -105,11 +105,22 @@ class FlashMessage
     {
         if (isset($_SESSION['flash_messages'][$key])) {
             $message = $_SESSION['flash_messages'][$key];
-            unset($_SESSION['flash_messages'][$key]); // Clear the message after retrieval
+            unset($_SESSION['flash_messages'][$key]);
             return $message;
         }
 
         return null;
+    }
+
+    /**
+     * Peek at a specific flash message by key without removing it from the session.
+     *
+     * @param string $key The key of the message.
+     * @return string|null The message content, or null if not found.
+     */
+    public static function peek(string $key): ?string
+    {
+        return $_SESSION['flash_messages'][$key] ?? null;
     }
 
     /**

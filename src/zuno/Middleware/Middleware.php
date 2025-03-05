@@ -4,6 +4,7 @@ namespace Zuno\Middleware;
 
 use Closure;
 use Zuno\Http\Request;
+use Zuno\Http\Response;
 use Zuno\Middleware\Contracts\Middleware as ContractsMiddleware;
 
 class Middleware
@@ -11,7 +12,7 @@ class Middleware
     /**
      * Closure that handles the request processing.
      *
-     * @var Closure(Request): Request
+     * @var Closure(Request, Closure): Response
      */
     public Closure $start;
 
@@ -20,7 +21,7 @@ class Middleware
      */
     public function __construct()
     {
-        $this->start = fn(Request $request) => $request;
+        $this->start = fn(Request $request, Closure $next): Response => $next($request);
     }
 
     /**
@@ -32,17 +33,20 @@ class Middleware
     public function applyMiddleware(ContractsMiddleware $middleware): void
     {
         $next = $this->start;
-        $this->start = fn(Request $request) => $middleware($request, $next);
+
+        $this->start = fn(Request $request, Closure $next): Response => $middleware($request, $next);
     }
 
     /**
      * Handle the incoming request through the middleware chain.
      *
      * @param Request $request The incoming request.
-     * @return mixed The result of the middleware processing.
+     * @return Response The response returned by the middleware chain.
      */
-    public function handle(Request $request): mixed
+    public function handle(Request $request): Response
     {
-        return ($this->start)($request);
+        $finalHandler = fn(Request $request): Response => new Response();
+
+        return ($this->start)($request, $finalHandler);
     }
 }

@@ -33,7 +33,7 @@ class MakeModelCommand extends Command
         $namespace = 'App\\Models' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
 
         // Construct the file path by replacing slashes with directory separators
-        $filePath = getcwd() . '/app/Models/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php';
+        $filePath = base_path() . '/app/Models/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php';
 
         // Check if the model already exists
         if (file_exists($filePath)) {
@@ -43,8 +43,9 @@ class MakeModelCommand extends Command
 
         // Create necessary directories if they don't exist
         $directoryPath = dirname($filePath);
+
         if (!is_dir($directoryPath)) {
-            mkdir($directoryPath, 0755, true);
+            $result = mkdir($directoryPath, 0755, true);
         }
 
         // Generate the content for the new model

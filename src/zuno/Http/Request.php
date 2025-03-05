@@ -4,9 +4,12 @@ namespace Zuno\Http;
 
 use Zuno\Support\File;
 use Zuno\Http\Rule;
+use Zuno\Http\Support\RequestParser;
 
 class Request extends Rule
 {
+    use RequestParser;
+
     /**
      * Stores query and post parameters.
      *

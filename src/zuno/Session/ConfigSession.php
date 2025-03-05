@@ -8,7 +8,6 @@ class ConfigSession
 {
     public static function configAppSession(): void
     {
-        // Initializes the cache configuration
         Config::initialize();
 
         $sessionConfig = (array) config('session');
@@ -21,7 +20,6 @@ class ConfigSession
         $sessionSecureCookie = (bool) $sessionConfig['secure'];
         $sessionHttpOnly = (bool) $sessionConfig['http_only'];
         $sessionSameSite = $sessionConfig['same_site'];
-        $sessionPartitioned = (bool) $sessionConfig['partitioned'];
         $sessionExpireOnClose = (bool) $sessionConfig['expire_on_close'];
         $sessionFiles = $sessionConfig['files'];
 
@@ -61,8 +59,7 @@ class ConfigSession
             'domain' => $sessionDomain,
             'secure' => $sessionSecureCookie,
             'httponly' => $sessionHttpOnly,
-            'samesite' => $sessionSameSite,
-            'partitioned' => $sessionPartitioned,
+            'samesite' => $sessionSameSite
         ];
 
         session_set_cookie_params($cookieParams);
