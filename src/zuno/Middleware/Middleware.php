@@ -33,20 +33,21 @@ class Middleware
     public function applyMiddleware(ContractsMiddleware $middleware): void
     {
         $next = $this->start;
-
-        $this->start = fn(Request $request, Closure $next): Response => $middleware($request, $next);
+        $this->start = function (Request $request, Closure $finalHandler) use ($middleware, $next) {
+            return $middleware($request, function (Request $request) use ($next, $finalHandler) {
+                return $next($request, $finalHandler);
+            });
+        };
     }
 
     /**
-     * Handle the incoming request through the middleware chain.
-     *
-     * @param Request $request The incoming request.
-     * @return Response The response returned by the middleware chain.
+     * Handle the incoming request through the middleware chain
+     * @param Request $request
+     * @param Closure $finalHandler
+     * @return Response
      */
-    public function handle(Request $request): Response
+    public function handle(Request $request, Closure $finalHandler): Response
     {
-        $finalHandler = fn(Request $request): Response => new Response();
-
         return ($this->start)($request, $finalHandler);
     }
 }

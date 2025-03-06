@@ -10,8 +10,7 @@ trait Auth
     /**
      * Attempt to log the user in with email and password.
      *
-     * @param string $email
-     * @param string $password
+     * @param array $credentials
      * @return bool
      */
     public static function attempt(array $credentials = []): bool

@@ -25,10 +25,10 @@ class PreventCrossSiteScripting implements Middleware
         $input = $request->all();
 
         array_walk_recursive($input, function (&$input) {
-            $input = strip_tags($input);
+            $input = strip_tags(html_entity_decode($input));
         });
 
-        collect($request)->merge($input);
+        $request->merge($input);
 
         return $next($request);
     }

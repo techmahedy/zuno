@@ -1,44 +1,31 @@
 <?php
 
 use Zuno\Support\Route;
-use Zuno\Http\Support\Abort;
 use Zuno\Session\Input;
 use Zuno\Session\FlashMessage;
 use Zuno\Logger\Log as Reader;
+use Zuno\Http\Support\Abort;
+use Zuno\Http\Response;
 use Zuno\Http\Request;
 use Zuno\Http\Redirect;
-use Zuno\Http\Controllers\Controller;
+use Zuno\DI\Container;
 use Zuno\Config\Config;
 use Zuno\Auth\Security\Auth;
 
 /**
- * Renders a view with the given data.
+ * Get the available container instance
  *
- * @param string $view The name of the view file to render.
- * @param array $data An associative array of data to pass to the view (default is an empty array).
- * @return mixed The rendered view output.
+ * @param string|class-string|null $abstract
+ * @param array  $parameters
+ * @return mixed
  */
-function view($view, $data = []): mixed
+function app($abstract = null, array $parameters = [])
 {
-    static $instance = null;
-    if ($instance === null) {
-        $instance = new Controller();
+    if (is_null($abstract)) {
+        return Container::getInstance();
     }
-    return $instance->render($view, $data);
-}
 
-/**
- * Creates a new redirect instance for handling HTTP redirects.
- *
- * @return Redirect A new instance of the Redirect class.
- */
-function redirect(): Redirect
-{
-    static $instance = null;
-    if ($instance === null) {
-        $instance = new Redirect();
-    }
-    return $instance;
+    return Container::getInstance()->get($abstract, $parameters);
 }
 
 /**
@@ -50,7 +37,38 @@ function request(): Request
 {
     static $instance = null;
     if ($instance === null) {
-        $instance = new Request();
+        $instance = app('\Zuno\Http\Request');
+    }
+    return $instance;
+}
+
+/**
+ * Renders a view with the given data.
+ *
+ * @param string $view The name of the view file to render.
+ * @param array $data An associative array of data to pass to the view (default is an empty array).
+ * @return mixed The rendered view output.
+ */
+function view($view, $data = []): Response
+{
+    static $instance = null;
+    if ($instance === null) {
+        $instance = app('\Zuno\Http\Controllers\Controller');
+    }
+    $content = $instance->render($view, $data, true);
+    return new Response($content);
+}
+
+/**
+ * Creates a new redirect instance for handling HTTP redirects.
+ *
+ * @return Redirect A new instance of the Redirect class.
+ */
+function redirect(): Redirect
+{
+    static $instance = null;
+    if ($instance === null) {
+        $instance = app('\Zuno\Http\Redirect');
     }
     return $instance;
 }
@@ -137,7 +155,7 @@ function flash(): FlashMessage
 {
     static $instance = null;
     if ($instance === null) {
-        $instance = new FlashMessage();
+        $instance = app('\Zuno\Session\FlashMessage');
     }
     return $instance;
 }

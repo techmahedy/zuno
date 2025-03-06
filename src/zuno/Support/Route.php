@@ -7,6 +7,7 @@ use Zuno\Http\Response;
 use Zuno\Http\Request;
 use App\Http\Kernel;
 use Zuno\DI\Container;
+use Zuno\Middleware\Contracts\Middleware as ContractsMiddleware;
 
 class Route extends Kernel
 {
@@ -49,16 +50,6 @@ class Route extends Kernel
     protected static array $routeMiddlewares = [];
 
     /**
-     * Constructor to initialize the request property.
-     *
-     * @param Request $request The request instance.
-     */
-    public function __construct(Request $request)
-    {
-        $this->request = $request;
-    }
-
-    /**
      * Magic method to handle static method calls for 'get' and 'post' route registration.
      *
      * @param string $name The method name.
@@ -69,8 +60,8 @@ class Route extends Kernel
     public static function __callStatic($name, $arguments): Route
     {
         return match ($name) {
-            'get' => (new Route(new Request))->getRoute($arguments[0], $arguments[1]),
-            'post' => (new Route(new Request))->postRoute($arguments[0], $arguments[1]),
+            'get' => (new Route())->getRoute($arguments[0], $arguments[1]),
+            'post' => (new Route())->postRoute($arguments[0], $arguments[1]),
             default => throw new \Exception($name . ' method not found', true)
         };
     }
@@ -176,10 +167,10 @@ class Route extends Kernel
      *
      * @return mixed The route callback or false if not found.
      */
-    public function getCallback(): mixed
+    public function getCallback($request): mixed
     {
-        $method = $this->request->getMethod();
-        $url = $this->request->getPath();
+        $method = $request->getMethod();
+        $url = $request->getPath();
         $routes = self::$routes[$method] ?? [];
         $routeParams = false;
 
@@ -209,7 +200,7 @@ class Route extends Kernel
                 }
                 $routeParams = array_combine($routeNames, $values);
 
-                $this->request->setRouteParams($routeParams);
+                $request->setRouteParams($routeParams);
                 return $callback;
             }
         }
@@ -220,10 +211,10 @@ class Route extends Kernel
      * Get the current route middleware
      * @return array|null
      */
-    public function getCurrentRouteMiddleware(): ?array
+    public function getCurrentRouteMiddleware($request): ?array
     {
-        $url = $this->request->getPath();
-        $method = $this->request->getMethod();
+        $url = $request->getPath();
+        $method = $request->getMethod();
         $routes = self::$routes[$method] ?? [];
 
         foreach ($routes as $route => $callback) {
@@ -240,9 +231,9 @@ class Route extends Kernel
      * Applies middleware to the route
      * @return Route
      */
-    private function applyRouteMiddleware(): Route
+    private function applyRouteMiddleware($middleware, $currentMiddleware): void
     {
-        foreach ($this->getCurrentRouteMiddleware() ?? [] as $key) {
+        foreach ($currentMiddleware as $key) {
             [$name, $params] = array_pad(explode(':', $key, 2), 2, null);
             $params = $params ? explode(',', $params) : [];
 
@@ -251,49 +242,54 @@ class Route extends Kernel
             }
 
             $middlewareClass = $this->routeMiddleware[$name];
-            $middleware = new $middlewareClass();
-            $request = new Request();
+            $middlewareInstance = new $middlewareClass();
+            if (!$middlewareInstance instanceof ContractsMiddleware) {
+                throw new \Exception("Unresolved dependency $middlewareClass", 1);
+            }
 
-            $next = fn(Request $request) => new Response();
-            $middleware->handle($request, $next, ...$params);
-        }
-
-        return $this;
-    }
-
-    private function applyWebMiddleware(): void
-    {
-        foreach ($this->middleware ?? [] as $middlewareClass) {
-            $middleware = new $middlewareClass();
-            $next = fn(Request $request) => new Response();
-            $middleware($this->request, $next);
+            $middleware->applyMiddleware($middlewareInstance);
         }
     }
 
     /**
      * Resolves and executes the route callback with middleware and dependencies.
-     *
-     * @param Container $container The container for resolving dependencies.
-     * @return mixed The result of the callback execution.
+     * @param Container $container
+     * @param Request $request
+     * @param Middleware $middleware
      * @throws \ReflectionException If there is an issue with reflection.
-     * @throws \Exception If the route callback is not defined or dependency resolution fails.
+     * @throws \Exception
+     * @return Response
      */
-    public function resolve(Container $container): mixed
+    public function resolve(Container $container, Request $request, Middleware $middleware)
     {
-        $this->applyWebMiddleware();
+        $currentMiddleware = $this->getCurrentRouteMiddleware($request);
 
-        $this->applyRouteMiddleware();
-
-        $callback = $this->getCallback();
-        if (!$callback) abort(404);
-
-        $routeParams = $this->request->getRouteParams();
-
-        if (is_array($callback)) {
-            return $this->resolveControllerAction($callback, $container, $routeParams);
+        if ($currentMiddleware) {
+            $this->applyRouteMiddleware($middleware, $currentMiddleware);
         }
 
-        return call_user_func($callback, ...array_filter($this->urlParams));
+        $callback = $this->getCallback($request);
+        if (!$callback) abort(404);
+
+        $routeParams = $request->getRouteParams();
+
+        // Define the final handler (route callback)
+        // Middleware stack ends here
+        $finalHandler = function ($request) use ($callback, $container, $routeParams) {
+            $result = is_array($callback)
+                ? $this->resolveControllerAction($callback, $container, $routeParams)
+                : call_user_func($callback, ...array_values($routeParams));
+
+            if (!($result instanceof \Zuno\Http\Response)) {
+                return new \Zuno\Http\Response($result);
+            }
+            return $result;
+        };
+
+        // Pass the final handler to the middleware
+        $response = $middleware->handle($request, $finalHandler);
+
+        return $response;
     }
 
     /**

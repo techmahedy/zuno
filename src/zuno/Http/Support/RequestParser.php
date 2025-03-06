@@ -28,6 +28,16 @@ trait RequestParser
     }
 
     /**
+     * Retrieves server
+     *
+     * @return array
+     */
+    public function server(): array
+    {
+        return $_SERVER;
+    }
+
+    /**
      * Retrieves the request headers.
      *
      * @return array<string, string> The request headers.
@@ -91,9 +101,39 @@ trait RequestParser
      *
      * @return string The query string.
      */
-    public function query(): string
+    public function query(): ?string
     {
         return $_SERVER['QUERY_STRING'];
+    }
+
+    /**
+     * Retrieves the raw body content of the request.
+     *
+     * @return string|resource|false|null The raw body content.
+     */
+    public function content()
+    {
+        return file_get_contents('php://input');
+    }
+
+    /**
+     * Retrieves the HTTP method used for the request.
+     *
+     * @return string The HTTP method in lowercase.
+     */
+    public function method(): string
+    {
+        return $this->server['REQUEST_METHOD'];
+    }
+
+    /**
+     * Retrieves the request query string.
+     *
+     * @return null|array
+     */
+    public function cookie(): ?array
+    {
+        return $_COOKIE;
     }
 
     /**

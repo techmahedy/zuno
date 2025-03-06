@@ -7,34 +7,54 @@ use Zuno\Http\Support\RequestParser;
 use Zuno\Http\Support\RequestHelper;
 use Zuno\Http\Rule;
 
-/**
- * The Request class encapsulates all HTTP request-related data and functionality.
- * It handles query parameters, form data, uploaded files, headers, and more.
- */
 class Request
 {
     use RequestParser, RequestHelper, Rule;
 
     /**
-     * Stores query and post parameters.
-     *
-     * @var array<string, mixed>
+     * Custom parameters.
      */
-    public array $params = [];
+    public array $attributes = [];
 
     /**
-     * Stores sanitized input parameters.
-     *
-     * @var array<string, mixed>
+     * Request body parameters ($_POST).
      */
-    public array $input = [];
+    public array $request;
 
     /**
-     * Stores files uploaded with the request.
-     *
-     * @var array<string, mixed>
+     * Query string parameters ($_GET).
      */
-    public array $files = [];
+    public ?string $query;
+
+    /**
+     * Server and execution environment parameters ($_SERVER).
+     */
+    public array $server;
+
+    /**
+     * Uploaded files ($_FILES).
+     */
+    public array $files;
+
+    /**
+     * Cookies ($_COOKIE).
+     */
+    public array $cookies;
+
+    /**
+     * Headers (taken from the $_SERVER).
+     */
+    public array $headers;
+
+    /**
+     * @var string|resource|false|null
+     */
+    protected $content;
+
+    protected ?string $requestUri = null;
+    protected ?string $baseUrl = null;
+    protected ?string $method = null;
+    protected string $defaultLocale = 'en';
 
     /**
      * Constructor for the Request class.
@@ -42,7 +62,17 @@ class Request
      */
     public function __construct()
     {
+        $this->request = $this->all();
+        $this->query = $this->query();
+        $this->attributes = $this->all();
+        $this->cookies = $this->cookie();
         $this->files = $_FILES;
+        $this->server = $this->server();
+        $this->headers = $this->headers();
+        $this->content = $this->content();
+        $this->requestUri = $this->getPath();
+        $this->baseUrl = base_url();
+        $this->method = $this->method();
     }
 
     /**
@@ -57,6 +87,28 @@ class Request
     }
 
     /**
+     * Retrieves all input data from the request.
+     *
+     * @return array<string, mixed> The input data.
+     */
+    public function all(): array
+    {
+        return array_merge($_POST, $_GET);
+    }
+
+    /**
+     * Merges new input data into the request.
+     *
+     * @param array<string, mixed> $input The input data to merge.
+     * @return self The current instance.
+     */
+    public function merge(array $input): self
+    {
+        $this->request = array_merge($this->request, $input);
+        return $this;
+    }
+
+    /**
      * Retrieves the current request URI path.
      *
      * @return string The decoded URI path.
@@ -64,7 +116,7 @@ class Request
     public function getPath(): string
     {
         return urldecode(
-            parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)
+            parse_url($this->server['REQUEST_URI'], PHP_URL_PATH)
         );
     }
 
@@ -75,7 +127,7 @@ class Request
      */
     public function getMethod(): string
     {
-        return strtolower($_SERVER['REQUEST_METHOD']);
+        return strtolower($this->server['REQUEST_METHOD']);
     }
 
     /**
@@ -106,7 +158,7 @@ class Request
      */
     public function setRouteParams(array $params): self
     {
-        $this->params = $params;
+        $this->attributes = array_merge($this->attributes, $params);
         return $this;
     }
 
@@ -117,7 +169,7 @@ class Request
      */
     public function getRouteParams(): array
     {
-        return $this->params;
+        return $this->attributes;
     }
 
     /**
@@ -129,7 +181,7 @@ class Request
      */
     public function getRouteParam(string $param, mixed $default = null): mixed
     {
-        return $this->params[$param] ?? $default;
+        return $this->attributes[$param] ?? $default;
     }
 
     /**
@@ -140,7 +192,7 @@ class Request
      */
     public function file(string $param): ?File
     {
-        if (isset($this->files[$param]) && $this->files[$param]['error'] === UPLOAD_ERR_OK) {
+        if (isset($this->files[$param])) {
             return new File($this->files[$param]);
         }
         return null;

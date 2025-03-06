@@ -93,8 +93,9 @@ namespace {$namespace};
 use Closure;
 use Zuno\Http\Request;
 use Zuno\Http\Response;
+use Zuno\Middleware\Contracts\Middleware;
 
-class {$className}
+class {$className} implements Middleware
 {
     /**
      * Handle an incoming request.

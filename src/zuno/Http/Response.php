@@ -3,7 +3,6 @@
 namespace Zuno\Http;
 
 use Zuno\Http\Response\HttpStatus;
-use Zuno\Http\Request;
 use Zuno\Http\Exceptions\HttpException;
 
 /**
@@ -11,14 +10,14 @@ use Zuno\Http\Exceptions\HttpException;
  * and sending the response body. It also provides methods for handling HTTP exceptions
  * and rendering error pages or JSON responses based on the request type.
  */
-class Response extends Request implements HttpStatus
+class Response implements HttpStatus
 {
     /**
      * The response body content.
      *
      * @var string
      */
-    protected string $body;
+    protected mixed $body;
 
     /**
      * The HTTP status code for the response.
@@ -37,15 +36,26 @@ class Response extends Request implements HttpStatus
     /**
      * Constructor for the Response class.
      *
-     * @param string $body The response body content.
+     * @param mixed $body The response body content.
      * @param int $statusCode The HTTP status code (default: 200).
      * @param array<string, string> $headers The HTTP headers (default: empty array).
      */
-    public function __construct(string $body = '', int $statusCode = 200, array $headers = [])
+    public function __construct(mixed $body = '', int $statusCode = 200, array $headers = [])
     {
         $this->body = $body;
         $this->statusCode = $statusCode;
         $this->headers = $headers;
+    }
+
+    /**
+     * Set the response body content.
+     *
+     * @param string $body The new response body.
+     * @return void
+     */
+    public function setBody(string $body): void
+    {
+        $this->body = $body;
     }
 
     /**

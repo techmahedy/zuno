@@ -2,6 +2,8 @@
 
 namespace Zuno\Http\Support;
 
+use Zuno\Auth\Security\Auth;
+
 trait RequestHelper
 {
     /**
@@ -107,28 +109,6 @@ trait RequestHelper
         return empty($this->all());
     }
 
-
-    /**
-     * Retrieves all input data, sanitizing it based on the request method.
-     *
-     * @return array<string, mixed> Sanitized input data.
-     */
-    public function all(): array
-    {
-        $body = [];
-        $inputSource = $this->getMethod() === 'get' ? $_GET : $_POST;
-
-        foreach ($inputSource as $key => $value) {
-            $body[$key] = filter_input(
-                $this->getMethod() === 'get' ? INPUT_GET : INPUT_POST,
-                $key,
-                FILTER_SANITIZE_SPECIAL_CHARS
-            );
-        }
-
-        return $body;
-    }
-
     /**
      * Retrieves a specific input parameter or all input data.
      *
@@ -157,5 +137,15 @@ trait RequestHelper
         }
 
         return array_key_exists($param, $this->input);
+    }
+
+    /**
+     * Get the authenticated user.
+     *
+     * @return \App\Models\User|null The authenticated user instance or null if no user is authenticated.
+     */
+    public function auth(): ?\App\Models\User
+    {
+        return Auth::user() ?? null;
     }
 }
