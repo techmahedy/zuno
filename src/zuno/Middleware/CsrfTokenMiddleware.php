@@ -22,8 +22,12 @@ class CsrfTokenMiddleware implements Middleware
      */
     public function __invoke(Request $request, Closure $next): Response
     {
-        if ($request->isPost() && !$request->has('csrf_token')) {
+        if ($request->isPost() && !$request->has('_token')) {
             throw new \Exception("CSRF Token not found", 422);
+        }
+
+        if ($request->isPost() && ($_SESSION['_token'] !== $request->_token)) {
+            throw new \Exception("CSRF Token mismatched", 422);
         }
 
         return $next($request);

@@ -37,7 +37,7 @@ class Route extends Kernel
      *
      * @var array<string, string>
      */
-    protected static array $namedRoutes = [];
+    public static array $namedRoutes = [];
 
     /**
      * @var string|null The path of the current route being defined.
@@ -50,12 +50,12 @@ class Route extends Kernel
     protected static array $routeMiddlewares = [];
 
     /**
-     * Magic method to handle static method calls for 'get' and 'post' route registration.
+     * Magic method to handle static method calls for route registration.
      *
      * @param string $name The method name.
      * @param array $arguments The method arguments.
      * @return Route
-     * @throws \Exception If method name is not 'get' or 'post'.
+     * @throws \Exception If method name is not supported.
      */
     public static function __callStatic($name, $arguments): Route
     {

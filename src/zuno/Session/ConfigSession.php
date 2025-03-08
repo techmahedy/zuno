@@ -72,8 +72,10 @@ class ConfigSession
         // Regenerate after lifetime expires.
         if (isset($_SESSION['last_regenerated']) && (time() - $_SESSION['last_regenerated']) > ($sessionLifetime * 60)) {
             self::regenerateSession();
+            $_SESSION['_token'] = bin2hex(openssl_random_pseudo_bytes(16));
             $_SESSION['last_regenerated'] = time();
         } else if (!isset($_SESSION['last_regenerated'])) {
+            $_SESSION['_token'] = bin2hex(openssl_random_pseudo_bytes(16));
             $_SESSION['last_regenerated'] = time();
         }
     }

@@ -39,7 +39,7 @@ class StorageLinkCommand extends Command
         try {
             // Create the symbolic link
             $filesystem->symlink($target, $publicStorage);
-            $output->writeln('<info>Symbolic link created successfully!</info>');
+            $output->writeln('<info>Symbolic link created successfully</info>');
             return Command::SUCCESS;
         } catch (\Exception $e) {
             $output->writeln('<error>Failed to create symbolic link: ' . $e->getMessage() . '</error>');

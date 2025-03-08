@@ -26,7 +26,7 @@ class Input
      */
     public static function flashInput()
     {
-        $_SESSION['input'] = $_POST + $_GET;;
+        $_SESSION['input'] = $_POST + $_GET;
     }
 
     /**

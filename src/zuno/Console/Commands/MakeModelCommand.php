@@ -37,7 +37,7 @@ class MakeModelCommand extends Command
 
         // Check if the model already exists
         if (file_exists($filePath)) {
-            $output->writeln('<error>Model already exists!</error>');
+            $output->writeln('<error>Model already exists</error>');
             return Command::FAILURE;
         }
 
@@ -55,7 +55,7 @@ class MakeModelCommand extends Command
         file_put_contents($filePath, $content);
 
         // Inform the user that the model has been created
-        $output->writeln('<info>Model created successfully!</info>');
+        $output->writeln('<info>Model created successfully</info>');
 
         return Command::SUCCESS;
     }

@@ -4,6 +4,7 @@ namespace Zuno\Http;
 
 use Zuno\Http\Response\HttpStatus;
 use Zuno\Http\Exceptions\HttpException;
+use Zuno\Http\Controllers\Controller;
 
 /**
  * The Response class handles HTTP responses, including setting headers, status codes,
@@ -17,21 +18,21 @@ class Response implements HttpStatus
      *
      * @var string
      */
-    protected mixed $body;
+    public mixed $body;
 
     /**
      * The HTTP status code for the response.
      *
      * @var int
      */
-    protected int $statusCode;
+    public int $statusCode;
 
     /**
      * The HTTP headers for the response.
      *
      * @var array<string, string>
      */
-    protected array $headers = [];
+    public array $headers = [];
 
     /**
      * Constructor for the Response class.
@@ -106,9 +107,26 @@ class Response implements HttpStatus
      * @param string $value The header value.
      * @return void
      */
-    public function setHeader(string $name, string $value): void
+    public function setHeader(string $name, string $value): Response
     {
         $this->headers[$name] = $value;
+
+        return $this;
+    }
+
+    /**
+     * Set multiple HTTP headers for the response.
+     *
+     * @param array<string, string> $headers An associative array of headers.
+     * @return Response Returns the current Response instance.
+     */
+    public function withHeaders(array $headers): Response
+    {
+        foreach ($headers as $name => $value) {
+            $this->setHeader($name, $value);
+        }
+
+        return $this;
     }
 
     /**
@@ -121,15 +139,12 @@ class Response implements HttpStatus
      */
     public function send(): void
     {
-        // Set the HTTP response code
         http_response_code($this->statusCode);
 
-        // Send all headers
         foreach ($this->headers as $name => $value) {
             header("$name: $value");
         }
 
-        // If the status code is a redirection (3xx), exit after sending headers
         if (
             $this->statusCode >= Response::HTTP_MULTIPLE_CHOICES &&
             $this->statusCode < Response::HTTP_BAD_REQUEST
@@ -137,8 +152,44 @@ class Response implements HttpStatus
             exit;
         }
 
-        // Output the response body
         echo $this->body;
+    }
+
+    /**
+     * Return a JSON response.
+     *
+     * This method sets the appropriate headers for a JSON response and returns the JSON-encoded data.
+     *
+     * @param mixed $data The data to encode as JSON.
+     * @param int $statusCode The HTTP status code (default: 200).
+     * @param array<string, string> $headers Additional headers to include in the response.
+     * @return Response
+     */
+    public function json(mixed $data, int $statusCode = 200, array $headers = []): Response
+    {
+        $this->body = json_encode($data);
+        $this->statusCode = $statusCode;
+
+        $this->headers['Content-Type'] = 'application/json';
+        $this->headers = array_merge($this->headers, $headers);
+
+        return $this;
+    }
+
+    /**
+     * Return a plain text response.
+     *
+     * @param string $content The plain text content.
+     * @param int $statusCode The HTTP status code (default: 200).
+     * @param array<string, string> $headers Additional headers to include in the response.
+     * @return Response
+     */
+    public function text(string $content, int $statusCode = 200, array $headers = []): Response
+    {
+        $this->body = $content;
+        $this->statusCode = $statusCode;
+        $this->headers = array_merge($this->headers, ['Content-Type' => 'text/plain'], $headers);
+        return $this;
     }
 
     /**
@@ -207,5 +258,19 @@ class Response implements HttpStatus
             // If the error page does not exist, throw an HTTP exception
             throw new HttpException($statusCode, $message);
         }
+    }
+
+    /**
+     * Renders a view with the given data.
+     *
+     * @param string $view The name of the view file to render.
+     * @param array $data An associative array of data to pass to the view (default is an empty array).
+     * @return mixed The rendered view output.
+     */
+    public function view($view, $data = []): Response
+    {
+        $content = app(Controller::class)->render($view, $data, true);
+
+        return new Response($content);
     }
 }

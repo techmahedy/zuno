@@ -59,7 +59,7 @@ class MakeControllerCommand extends Command
         file_put_contents($filePath, $content);
 
         // Inform the user that the controller has been created
-        $output->writeln('<info>Controller created successfully!</info>');
+        $output->writeln('<info>Controller created successfully</info>');
 
         return Command::SUCCESS;
     }

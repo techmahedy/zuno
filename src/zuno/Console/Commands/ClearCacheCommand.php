@@ -15,13 +15,13 @@ class ClearCacheCommand extends Command
     {
         $this
             ->setName('cache:clear')
-            ->setDescription('Clear all cache files from the storage/cache folder.')
+            ->setDescription('Clear all cache files from the storage/framework folder.')
             ->addOption('force', null, InputOption::VALUE_NONE, 'Forcefully clear the cache without any confirmation');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $cacheDir = base_path() . '/storage/cache';
+        $cacheDir = base_path() . '/storage/framework';
 
         // Confirm with the user unless --force is passed
         if (!$input->getOption('force')) {
@@ -40,15 +40,30 @@ class ClearCacheCommand extends Command
             return Command::FAILURE;
         }
 
-        // Remove all files from the cache directory
-        $files = glob($cacheDir . '/*');
+        // Recursively delete all files and subdirectories
+        $this->deleteDirectoryContents($cacheDir);
+
+        $output->writeln('<info>Cache cleared successfully</info>');
+        return Command::SUCCESS;
+    }
+
+    /**
+     * Recursively delete all files and subdirectories in a directory.
+     *
+     * @param string $directory
+     */
+    private function deleteDirectoryContents($directory)
+    {
+        $files = array_diff(scandir($directory), ['.', '..']);
+
         foreach ($files as $file) {
-            if (is_file($file)) {
-                unlink($file);
+            $filePath = $directory . DIRECTORY_SEPARATOR . $file;
+            if (is_dir($filePath)) {
+                $this->deleteDirectoryContents($filePath);
+                rmdir($filePath);
+            } else {
+                unlink($filePath);
             }
         }
-
-        $output->writeln('<info>Cache cleared successfully!</info>');
-        return Command::SUCCESS;
     }
 }

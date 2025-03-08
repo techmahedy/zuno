@@ -15,13 +15,13 @@ class ClearSessionCommand extends Command
     {
         $this
             ->setName('session:clear')
-            ->setDescription('Clear all session files from the storage/sessions folder.')
+            ->setDescription('Clear all session files from the storage/framework/sessions folder.')
             ->addOption('force', null, InputOption::VALUE_NONE, 'Forcefully clear the session files without confirmation');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $sessionDir = base_path('storage/sessions');
+        $sessionDir = base_path('storage/framework/sessions');
 
         // Confirm with the user unless --force is passed
         if (!$input->getOption('force')) {
@@ -48,7 +48,7 @@ class ClearSessionCommand extends Command
             }
         }
 
-        $output->writeln('<info>All session files cleared successfully!</info>');
+        $output->writeln('<info>All session files cleared successfully</info>');
         return Command::SUCCESS;
     }
 }

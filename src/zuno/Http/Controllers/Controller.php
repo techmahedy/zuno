@@ -32,7 +32,7 @@ class Controller extends View
         $this->setViewFolder('resources/views' . DIRECTORY_SEPARATOR);
 
         // Set the directory where cached files are stored
-        $this->setCacheFolder('storage/cache' . DIRECTORY_SEPARATOR);
+        $this->setCacheFolder('storage/framework/views' . DIRECTORY_SEPARATOR);
 
         // Create the cache folder if it doesn't exist
         $this->createCacheFolder();
@@ -84,7 +84,7 @@ class Controller extends View
      *
      * @param string $view
      */
-    protected function prepare($view): string
+    public function prepare($view): string
     {
         $view = str_replace(['.', '/'], DIRECTORY_SEPARATOR, ltrim($view, '/'));
         $actual = base_path() . '/' . $this->viewFolder . DIRECTORY_SEPARATOR . $view . $this->fileExtension;

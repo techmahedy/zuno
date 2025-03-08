@@ -23,7 +23,7 @@ final class Config
      */
     public static function initialize(): void
     {
-        self::$cacheFile = base_path() . '/storage/cache/config.php';
+        self::$cacheFile = base_path() . '/storage/framework/cache/config.php';
     }
 
     /**
@@ -53,6 +53,10 @@ final class Config
      */
     public static function loadFromCache(): void
     {
+        if (php_sapi_name() === 'cli' || defined('STDIN')) {
+            return;
+        }
+
         if (file_exists(self::$cacheFile)) {
             self::$config = include self::$cacheFile;
         } else {

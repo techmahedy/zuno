@@ -11,6 +11,8 @@ use Zuno\Http\Redirect;
 use Zuno\DI\Container;
 use Zuno\Config\Config;
 use Zuno\Auth\Security\Auth;
+use Zuno\Auth\Security\Hash;
+use Zuno\Support\Session;
 
 /**
  * Get the available container instance
@@ -37,7 +39,21 @@ function request(): Request
 {
     static $instance = null;
     if ($instance === null) {
-        $instance = app('\Zuno\Http\Request');
+        $instance = app(Request::class);
+    }
+    return $instance;
+}
+
+/**
+ * Creates a new response instance to handle HTTP requests.
+ *
+ * @return Request A new instance of the Request class.
+ */
+function response(): Response
+{
+    static $instance = null;
+    if ($instance === null) {
+        $instance = app(Response::class);
     }
     return $instance;
 }
@@ -68,9 +84,43 @@ function redirect(): Redirect
 {
     static $instance = null;
     if ($instance === null) {
-        $instance = app('\Zuno\Http\Redirect');
+        $instance = app(Redirect::class);
     }
     return $instance;
+}
+
+/**
+ * Creates a new redirect instance for handling HTTP redirects.
+ *
+ * @return Redirect A new instance of the Redirect class.
+ */
+function session(): Session
+{
+    static $instance = null;
+    if ($instance === null) {
+        $instance = app(Session::class);
+    }
+    return app(Session::class);
+}
+
+/**
+ * Fetch csrf token
+ *
+ * @return null|string
+ */
+function csrf_token(): ?string
+{
+    return $_SESSION['_token'];
+}
+
+/**
+ * Creates a password hashing helper
+ *
+ * @return string
+ */
+function bcrypt(string $value): string
+{
+    return Hash::make($value);
 }
 
 /**
@@ -129,11 +179,12 @@ function route(string $name, mixed $params = []): ?string
  * Retrieve a configuration value by key.
  *
  * @param string $key The configuration key to retrieve.
+ * @param default $kedefault The default configuration key to retrieve.
  * @return string|array|null The configuration value associated with the key, or null if not found.
  */
-function config(string $key): null|string|array
+function config(string $key, ?string $default = null): null|string|array
 {
-    return Config::get($key) ?? null;
+    return Config::get($key) ?? $default;
 }
 
 /**
@@ -153,11 +204,7 @@ function isAuthenticated(): bool
  */
 function flash(): FlashMessage
 {
-    static $instance = null;
-    if ($instance === null) {
-        $instance = app('\Zuno\Session\FlashMessage');
-    }
-    return $instance;
+    return app(FlashMessage::class);
 }
 
 /**
@@ -237,7 +284,7 @@ function resource_path(string $path = ''): string
  */
 function enqueue(string $path = ''): string
 {
-    return base_url('public') . ($path ? '/' . ltrim($path, '/') : '');
+    return base_url() . ($path ? '/' . ltrim($path, '/') : '');
 }
 
 /**

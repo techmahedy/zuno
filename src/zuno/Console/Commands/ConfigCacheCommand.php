@@ -59,7 +59,7 @@ class ConfigCacheCommand extends Command
      */
     protected function initializeFilePath(): void
     {
-        $this->cacheFile = base_path() . '/storage/cache/config.php';
+        $this->cacheFile = base_path() . '/storage/framework/cache/config.php';
     }
 
     /**

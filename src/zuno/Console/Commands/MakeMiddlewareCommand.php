@@ -16,15 +16,13 @@ class MakeMiddlewareCommand extends Command
     {
         $this
             ->setName('make:middleware')
-            ->setDescription('Creates a new middleware class (global or route).')
-            ->addArgument('name', InputArgument::REQUIRED, 'The name of the middleware class.')
-            ->addOption('global', 'g', InputOption::VALUE_NONE, 'Creates a global middleware.');
+            ->setDescription('Creates a new middleware class.')
+            ->addArgument('name', InputArgument::REQUIRED, 'The name of the middleware class.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $name = $input->getArgument('name');
-        $isGlobal = $input->getOption('global');
 
         $parts = explode('/', $name);
         $className = array_pop($parts);
@@ -43,44 +41,13 @@ class MakeMiddlewareCommand extends Command
             mkdir($directoryPath, 0755, true);
         }
 
-        $content = $isGlobal
-            ? $this->generateGlobalMiddlewareContent($namespace, $className)
-            : $this->generateRouteMiddlewareContent($namespace, $className);
+        $content = $this->generateRouteMiddlewareContent($namespace, $className);
 
         file_put_contents($filePath, $content);
 
-        $output->writeln('<info>' . ($isGlobal ? 'Global' : 'Route') . ' Middleware created successfully!</info>');
+        $output->writeln('<info>Middleware created successfully</info>');
 
         return Command::SUCCESS;
-    }
-
-    protected function generateGlobalMiddlewareContent(string $namespace, string $className): string
-    {
-        return <<<EOT
-<?php
-
-namespace {$namespace};
-
-use Closure;
-use Zuno\Http\Request;
-use Zuno\Http\Response;
-use Zuno\Middleware\Contracts\Middleware;
-
-class {$className} implements Middleware
-{
-    /**
-     * Handles an incoming request.
-     *
-     * @param Request \$request
-     * @param \Closure(\Zuno\Http\Request) \$next
-     * @return Response
-     */
-    public function __invoke(Request \$request, Closure \$next): Response
-    {
-        return \$next(\$request);
-    }
-}
-EOT;
     }
 
     protected function generateRouteMiddlewareContent(string $namespace, string $className): string

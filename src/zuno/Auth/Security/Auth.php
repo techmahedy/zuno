@@ -13,7 +13,7 @@ trait Auth
      * @param array $credentials
      * @return bool
      */
-    public static function attempt(array $credentials = []): bool
+    public static function establishSession(array $credentials = []): bool
     {
         $email = $credentials['email'] ?? '';
         $password = $credentials['password'] ?? '';
