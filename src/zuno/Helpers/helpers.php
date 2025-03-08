@@ -244,6 +244,21 @@ function base_url(string $path = ''): string
 }
 
 /**
+ * Remove base URL from the URL
+ *
+ * @param string
+ * @return string
+ */
+function removeBaseUrl($url)
+{
+    $baseUrl = base_url();
+
+    $fileName = str_replace($baseUrl, '', $url);
+
+    return ltrim($fileName, '/');
+}
+
+/**
  * Get the storage path of the application.
  *
  * @param string $path An optional path to append to the storage path.

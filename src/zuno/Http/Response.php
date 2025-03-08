@@ -261,15 +261,39 @@ class Response implements HttpStatus
     }
 
     /**
-     * Renders a view with the given data.
+     * Renders a view with the given data and returns the rendered content as a string.
+     */
+    public function render(): string
+    {
+        if (empty($this->body)) {
+            throw new \RuntimeException('No view content to render.');
+        }
+
+        if (is_string($this->body)) {
+            return $this->body;
+        }
+
+        if (is_callable($this->body)) {
+            return call_user_func($this->body);
+        }
+
+        if (is_object($this->body) && method_exists($this->body, '__toString')) {
+            return $this->body->__toString();
+        }
+
+        return (string) $this->body;
+    }
+
+    /**
+     * Renders a view with the given data and returns a Response object.
      *
      * @param string $view The name of the view file to render.
      * @param array $data An associative array of data to pass to the view (default is an empty array).
-     * @return mixed The rendered view output.
+     * @return Response A Response object containing the rendered view.
      */
-    public function view($view, $data = []): Response
+    public function view(string $view, array $data = []): Response
     {
-        $content = app(Controller::class)->render($view, $data, true);
+        $content = $this->render($view, $data);
 
         return new Response($content);
     }
