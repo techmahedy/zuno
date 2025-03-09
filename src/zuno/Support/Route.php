@@ -216,7 +216,6 @@ class Route extends Kernel
         $url = $request->getPath();
         $method = $request->getMethod();
         $routes = self::$routes[$method] ?? [];
-
         foreach ($routes as $route => $callback) {
             $routeRegex = "@^" . preg_replace('/\{(\w+)(:[^}]+)?}/', '([^/]+)', $route) . "$@";
             if (preg_match($routeRegex, $url)) {
@@ -246,7 +245,6 @@ class Route extends Kernel
             if (!$middlewareInstance instanceof ContractsMiddleware) {
                 throw new \Exception("Unresolved dependency $middlewareClass", 1);
             }
-
             $middleware->applyMiddleware($middlewareInstance);
         }
     }
@@ -267,26 +265,57 @@ class Route extends Kernel
         if ($currentMiddleware) {
             $this->applyRouteMiddleware($middleware, $currentMiddleware);
         }
-
         $callback = $this->getCallback($request);
         if (!$callback) abort(404);
 
         $routeParams = $request->getRouteParams();
-
-        // Define the final handler (route callback)
-        // Middleware stack ends here
         $finalHandler = function ($request) use ($callback, $container, $routeParams) {
-            $result = is_array($callback)
-                ? $this->resolveControllerAction($callback, $container, $routeParams)
-                : call_user_func($callback, ...array_values($routeParams));
+            if (is_array($callback)) {
+                $result = $this->resolveControllerAction($callback, $container, $routeParams);
+            } elseif (is_string($callback) && class_exists($callback)) {
+                // Handle invokable controller
+                $controller = $container->get($callback);
 
+                // Resolve the __invoke method parameters using the container
+                $reflectionMethod = new \ReflectionMethod($controller, '__invoke');
+                $parameters = $reflectionMethod->getParameters();
+
+                $resolvedParameters = [];
+                foreach ($parameters as $parameter) {
+                    $paramName = $parameter->getName();
+                    $paramType = $parameter->getType();
+
+                    if ($paramType) {
+                        // If the parameter is a class, resolve it from the container
+                        if (class_exists($paramType->getName())) {
+                            $resolvedParameters[] = $container->get($paramType->getName());
+                        }
+                        // If the parameter is a route parameter, use the value from $routeParams
+                        elseif (array_key_exists($paramName, $routeParams)) {
+                            $resolvedParameters[] = $routeParams[$paramName];
+                        }
+                    } else {
+                        // If the parameter is not type-hinted, try to resolve it from $routeParams
+                        if (array_key_exists($paramName, $routeParams)) {
+                            $resolvedParameters[] = $routeParams[$paramName];
+                        } else {
+                            // If the parameter is not found, throw an exception or provide a default value
+                            throw new \Exception("Unable to resolve parameter: {$paramName}");
+                        }
+                    }
+                }
+
+                // Call the __invoke method with resolved parameters
+                $result = $controller->__invoke(...$resolvedParameters);
+            } else {
+                $result = call_user_func($callback, ...array_values($routeParams));
+            }
             if (!($result instanceof \Zuno\Http\Response)) {
                 return new \Zuno\Http\Response($result);
             }
             return $result;
         };
 
-        // Pass the final handler to the middleware
         $response = $middleware->handle($request, $finalHandler);
 
         return $response;

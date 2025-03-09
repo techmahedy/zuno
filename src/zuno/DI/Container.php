@@ -128,4 +128,3 @@ class Container
         return self::$instance;
     }
 }
-

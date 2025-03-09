@@ -2,6 +2,7 @@
 
 namespace Zuno;
 
+use App\Http\Kernel;
 use Zuno\Support\Route;
 use Zuno\Middleware\Middleware;
 use Zuno\Http\Response;
@@ -65,13 +66,11 @@ class Application extends AppServiceProvider
      *
      * This method instantiates a new `Kernel` object and assigns its middleware
      * to the `$globalMiddlewares` array for later processing.
-     *
-     * @param string $kernel The Kernel class name (not used in the method, might be unnecessary).
      * @return Application Returns the current Application instance.
      */
-    public function make(string $kernel): Application
+    public function handle(): Application
     {
-        $kernel = new $kernel;
+        $kernel = new Kernel;
         foreach ($kernel->middleware as $middlewareClass) {
             $this->globalMiddlewares[] = $middlewareClass;
         }

@@ -124,4 +124,9 @@ class Session
 
         $this->data = [];
     }
+
+    public function token(): ?string
+    {
+        return $_SESSION['_token'];
+    }
 }

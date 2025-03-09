@@ -8,6 +8,8 @@ trait Cache
 {
     protected $cacheFolder;
 
+    protected $publicSymlinkFolder;
+
     /**
      * Create cache folder.
      *
@@ -20,6 +22,22 @@ trait Cache
         if (!is_dir($actual)) {
             if (!mkdir($actual, 0755, true) && !is_dir($actual)) {
                 throw new RuntimeException('Unable to create view cache folder: ' . $actual);
+            }
+        }
+    }
+
+    /**
+     * Create storage symlink folder that will be connected to public directory.
+     *
+     * @return void
+     */
+    public function createPublicSymlinkFolder(): void
+    {
+        $actual = base_path() . '/' . $this->publicSymlinkFolder;
+
+        if (!is_dir($actual)) {
+            if (!mkdir($actual, 0755, true) && !is_dir($actual)) {
+                throw new RuntimeException('Unable to create app/public cache folder: ' . $actual);
             }
         }
     }
@@ -45,13 +63,20 @@ trait Cache
     }
 
     /**
-     * Set cache folder location
-     * Default to: ./cache.
-     *
+     * Set cache folder location     *
      * @param string $path
      */
     public function setCacheFolder($path): void
     {
         $this->cacheFolder = str_replace('/', DIRECTORY_SEPARATOR, $path);
+    }
+
+    /**
+     * Set public symlink folder
+     * @param string $path
+     */
+    public function setSymlinkPathFolder($path): void
+    {
+        $this->publicSymlinkFolder = str_replace('/', DIRECTORY_SEPARATOR, $path);
     }
 }

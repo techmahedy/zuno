@@ -5,6 +5,7 @@ namespace Zuno\Console\Commands;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class MakeControllerCommand extends Command
@@ -16,12 +17,14 @@ class MakeControllerCommand extends Command
         $this
             ->setName('make:controller')
             ->setDescription('Creates a new controller class.')
-            ->addArgument('name', InputArgument::REQUIRED, 'The name of the controller class.');
+            ->addArgument('name', InputArgument::REQUIRED, 'The name of the controller class.')
+            ->addOption('invok', null, InputOption::VALUE_NONE, 'Create an invokable controller.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $name = $input->getArgument('name');
+        $isInvokable = $input->getOption('invok');
 
         // Split the name by slashes to handle subfolders and class name
         $parts = explode('/', $name);
@@ -53,7 +56,7 @@ class MakeControllerCommand extends Command
         }
 
         // Generate the content for the new controller
-        $content = $this->generateControllerContent($namespace, $className);
+        $content = $this->generateControllerContent($namespace, $className, $isInvokable);
 
         // Write the new controller file to disk
         file_put_contents($filePath, $content);
@@ -64,7 +67,16 @@ class MakeControllerCommand extends Command
         return Command::SUCCESS;
     }
 
-    protected function generateControllerContent(string $namespace, string $className): string
+    protected function generateControllerContent(string $namespace, string $className, bool $isInvokable): string
+    {
+        if ($isInvokable) {
+            return $this->generateInvokableControllerContent($namespace, $className);
+        }
+
+        return $this->generateRegularControllerContent($namespace, $className);
+    }
+
+    protected function generateRegularControllerContent(string $namespace, string $className): string
     {
         return <<<EOT
 <?php
@@ -76,6 +88,28 @@ use App\Http\Controllers\Controller;
 class {$className} extends Controller
 {
     //
+}
+EOT;
+    }
+
+    protected function generateInvokableControllerContent(string $namespace, string $className): string
+    {
+        return <<<EOT
+<?php
+
+namespace {$namespace};
+
+use App\Http\Controllers\Controller;
+
+class {$className} extends Controller
+{
+    /**
+     * Handle the incoming request.
+     */
+    public function __invoke()
+    {
+        //
+    }
 }
 EOT;
     }

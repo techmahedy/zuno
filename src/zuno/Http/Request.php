@@ -2,6 +2,7 @@
 
 namespace Zuno\Http;
 
+use Zuno\Support\Session;
 use Zuno\Support\File;
 use Zuno\Http\Support\RequestParser;
 use Zuno\Http\Support\RequestHelper;
@@ -42,6 +43,11 @@ class Request
     public array $cookies;
 
     /**
+     * @var Session
+     */
+    public Session $session;
+
+    /**
      * Headers (taken from the $_SERVER).
      */
     public array $headers;
@@ -62,7 +68,7 @@ class Request
      */
     public function __construct()
     {
-        $this->request = $this->all();
+        $this->request = array_merge($_POST, $_GET);
         $this->query = $this->query();
         $this->attributes = $this->all();
         $this->cookies = $this->cookie();
@@ -73,6 +79,7 @@ class Request
         $this->requestUri = $this->getPath();
         $this->baseUrl = base_url();
         $this->method = $this->method();
+        $this->session = app(Session::class);
     }
 
     /**
@@ -93,7 +100,7 @@ class Request
      */
     public function all(): array
     {
-        return array_merge($_POST, $_GET);
+        return $this->request;
     }
 
     /**
@@ -104,7 +111,7 @@ class Request
      */
     public function merge(array $input): self
     {
-        $this->request = array_merge($this->request, $input);
+        $this->request = array_merge($this->all(), $input);
         return $this;
     }
 
@@ -196,5 +203,15 @@ class Request
             return new File($this->files[$param]);
         }
         return null;
+    }
+
+    /**
+     * Get the session instance.
+     *
+     * @return Session
+     */
+    public function session(): Session
+    {
+        return $this->session;
     }
 }

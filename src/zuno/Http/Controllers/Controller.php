@@ -37,6 +37,12 @@ class Controller extends View
         // Create the cache folder if it doesn't exist
         $this->createCacheFolder();
 
+        // Set the directory where cached files are stored
+        $this->setSymlinkPathFolder('storage/app/public' . DIRECTORY_SEPARATOR);
+
+        // Create the cache folder if it doesn't exist
+        $this->createPublicSymlinkFolder();
+
         // Set the format for echoing variables in templates
         $this->setEchoFormat('$this->e(%s)');
 
