@@ -497,7 +497,7 @@ trait BladeCondition
     protected function compileCsrf()
     {
         if (!isset($_SESSION['_token'])) {
-            $_SESSION['_token'] = bin2hex(openssl_random_pseudo_bytes(16)); // Generate token if not set
+            \Zuno\Session\ConfigSession::configAppSession();
         }
 
         $token = $_SESSION['_token'];

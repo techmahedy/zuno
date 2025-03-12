@@ -1,18 +1,19 @@
 <?php
 
-use Zuno\Support\Route;
+use Zuno\Application;
+use Zuno\Support\Session;
+use Zuno\Support\Facades\Hash;
+use Zuno\Support\Facades\Auth;
+use Zuno\Support\Facades\Abort;
 use Zuno\Session\Input;
 use Zuno\Session\FlashMessage;
 use Zuno\Logger\Log as Reader;
-use Zuno\Http\Support\Abort;
 use Zuno\Http\Response;
 use Zuno\Http\Request;
-use Zuno\Http\Redirect;
+use Zuno\Http\RedirectResponse;
+use Zuno\Http\Controllers\Controller;
 use Zuno\DI\Container;
 use Zuno\Config\Config;
-use Zuno\Auth\Security\Auth;
-use Zuno\Auth\Security\Hash;
-use Zuno\Support\Session;
 
 /**
  * Get the available container instance
@@ -37,11 +38,7 @@ function app($abstract = null, array $parameters = [])
  */
 function request(): Request
 {
-    static $instance = null;
-    if ($instance === null) {
-        $instance = app(Request::class);
-    }
-    return $instance;
+    return app(Request::class);
 }
 
 /**
@@ -51,11 +48,7 @@ function request(): Request
  */
 function response(): Response
 {
-    static $instance = null;
-    if ($instance === null) {
-        $instance = app(Response::class);
-    }
-    return $instance;
+    return app(Response::class);
 }
 
 /**
@@ -67,26 +60,21 @@ function response(): Response
  */
 function view($view, $data = []): Response
 {
-    static $instance = null;
-    if ($instance === null) {
-        $instance = app('\Zuno\Http\Controllers\Controller');
-    }
+    $instance = app(Controller::class);
+
     $content = $instance->render($view, $data, true);
+
     return new Response($content);
 }
 
 /**
  * Creates a new redirect instance for handling HTTP redirects.
  *
- * @return Redirect A new instance of the Redirect class.
+ * @return RedirectResponse A new instance of the RedirectResponse class.
  */
-function redirect(): Redirect
+function redirect(): RedirectResponse
 {
-    static $instance = null;
-    if ($instance === null) {
-        $instance = app(Redirect::class);
-    }
-    return $instance;
+    return app(RedirectResponse::class);
 }
 
 /**
@@ -96,10 +84,6 @@ function redirect(): Redirect
  */
 function session(): Session
 {
-    static $instance = null;
-    if ($instance === null) {
-        $instance = app(Session::class);
-    }
     return app(Session::class);
 }
 
@@ -141,11 +125,7 @@ function old($key): ?string
  */
 function logger(): \Monolog\Logger
 {
-    static $instance = null;
-    if ($instance === null) {
-        $instance = new Reader();
-    }
-    return $instance->logReader();
+    return app(Reader::class)->logReader();
 }
 
 /**
@@ -171,7 +151,7 @@ function route(string $name, mixed $params = []): ?string
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $basePath = rtrim($scheme . '://' . $host, '/');
-    $routePath = Route::route($name, $params);
+    $routePath = app('route')->route($name, $params);
     return $routePath ? $basePath . '/' . ltrim($routePath, '/') : null;
 }
 
@@ -184,6 +164,10 @@ function route(string $name, mixed $params = []): ?string
  */
 function config(string $key, ?string $default = null): null|string|array
 {
+    if (php_sapi_name() === 'cli' || defined('STDIN')) {
+        return \Zuno\Config\Config::get($key) ?? $default;
+    }
+
     return Config::get($key) ?? $default;
 }
 
@@ -219,8 +203,7 @@ function base_path(string $path = ''): string
         return realpath(__DIR__ . '/../../../../../../') . ($path ? DIRECTORY_SEPARATOR . $path : '');
     }
 
-    $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? dirname(__DIR__, 3);
-    return dirname($documentRoot) . ($path ? DIRECTORY_SEPARATOR . $path : '');
+    return BASE_PATH . ($path ? DIRECTORY_SEPARATOR . $path : '');
 }
 
 /**
@@ -266,7 +249,11 @@ function removeBaseUrl($url)
  */
 function storage_path(string $path = ''): string
 {
-    return base_url('storage') . ($path ? DIRECTORY_SEPARATOR . $path : '');
+    if (php_sapi_name() === 'cli' || defined('STDIN')) {
+        return base_url('storage') . ($path ? DIRECTORY_SEPARATOR . $path : '');
+    }
+
+    return app()->storagePath($path);
 }
 
 /**
@@ -277,7 +264,10 @@ function storage_path(string $path = ''): string
  */
 function public_path(string $path = ''): string
 {
-    return base_url('public') . ($path ? DIRECTORY_SEPARATOR . $path : '');
+    if (php_sapi_name() === 'cli' || defined('STDIN')) {
+        return base_url('public') . ($path ? DIRECTORY_SEPARATOR . $path : '');
+    }
+    return app()->publicPath($path);
 }
 
 /**
@@ -288,7 +278,7 @@ function public_path(string $path = ''): string
  */
 function resource_path(string $path = ''): string
 {
-    return base_url('resources') . ($path ? DIRECTORY_SEPARATOR . $path : '');
+    return app()->resourcesPath($path);
 }
 
 /**
@@ -297,9 +287,22 @@ function resource_path(string $path = ''): string
  * @param string $path The path to the asset relative to the public directory.
  * @return string The full URL to the asset.
  */
-function enqueue(string $path = ''): string
+function enqueue(string $path = '', $secure = null): string
 {
-    return base_url() . ($path ? '/' . ltrim($path, '/') : '');
+    return app('url')->enqueue($path, $secure);
+}
+
+/**
+ * Create a new redirect response to the previous location.
+ *
+ * @param  int  $status
+ * @param  array  $headers
+ * @param  mixed  $fallback
+ * @return \Zuno\Http\RedirectResponse
+ */
+function back($status = 302, $headers = [], $fallback = false)
+{
+    return app('redirect')->back($status, $headers, $fallback);
 }
 
 /**

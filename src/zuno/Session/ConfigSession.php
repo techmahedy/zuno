@@ -11,7 +11,9 @@ class ConfigSession
         Config::initialize();
 
         $sessionConfig = (array) config('session');
-
+        if (php_sapi_name() === 'cli' || defined('STDIN')) {
+            return;
+        }
         $sessionLifetime = (int) $sessionConfig['lifetime'];
         $sessionPath = $sessionConfig['path'];
         $sessionDomain = $sessionConfig['domain'];

@@ -4,7 +4,7 @@ namespace Zuno\Auth\Security;
 
 use RuntimeException;
 
-class Hash
+class PasswordHashing
 {
     /**
      * Hash a password using the configured algorithm and options.
@@ -13,7 +13,7 @@ class Hash
      * @return string
      * @throws RuntimeException
      */
-    public static function make($password)
+    public function make($password)
     {
         $driver = config('hashing.driver', 'bcrypt');
 
@@ -46,7 +46,7 @@ class Hash
      * @param string $hashedPassword
      * @return bool
      */
-    public static function check($password, $hashedPassword)
+    public function check($password, $hashedPassword)
     {
         return password_verify($password, $hashedPassword);
     }
@@ -57,7 +57,7 @@ class Hash
      * @param string $hashedPassword
      * @return bool
      */
-    public static function needsRehash($hashedPassword)
+    public function needsRehash($hashedPassword)
     {
         $driver = config('hashing.driver', 'bcrypt');
 

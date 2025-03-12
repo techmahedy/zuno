@@ -25,6 +25,10 @@ class Container
      */
     private static ?self $instance = null;
 
+    public function __clone() {}
+
+    public function __wakeup() {}
+
     /**
      * Bind a service to the container.
      *
@@ -38,7 +42,6 @@ class Container
         if (is_string($concrete) && class_exists($concrete)) {
             $concrete = fn() => new $concrete();
         }
-
         self::$bindings[$abstract] = $concrete;
 
         if ($singleton) {
@@ -82,19 +85,22 @@ class Container
      */
     public function get(string $abstract, array $parameters = [])
     {
+        // Return singleton instance if exists
+        if (isset(self::$instances[$abstract])) {
+            return self::$instances[$abstract];
+        }
+
         if (isset(self::$bindings[$abstract])) {
-            if (isset(self::$instances[$abstract])) {
-                if (is_null(self::$instances[$abstract])) {
-                    self::$instances[$abstract] = self::$bindings[$abstract]();
-                }
-                return self::$instances[$abstract];
+            // If it's a singleton, store the instance
+            if (array_key_exists($abstract, self::$instances)) {
+                return self::$instances[$abstract] = self::$bindings[$abstract]();
             }
             return self::$bindings[$abstract]();
         }
 
         if (
-            interface_exists($abstract)
-            || (class_exists($abstract) &&
+            interface_exists($abstract) ||
+            (class_exists($abstract) &&
                 (new \ReflectionClass($abstract))->isAbstract())
         ) {
             return;
@@ -102,6 +108,7 @@ class Container
 
         return new $abstract(...$parameters);
     }
+
 
     /**
      * Check if the container has a binding for the given service.
@@ -122,9 +129,19 @@ class Container
     public static function getInstance(): self
     {
         if (is_null(self::$instance)) {
-            self::$instance = new self();
+            self::$instance = new static();
         }
 
         return self::$instance;
+    }
+
+    /**
+     * Set the instance
+     * @param self $instance
+     * @return void
+     */
+    public static function setInstance(self $instance): void
+    {
+        self::$instance = $instance;
     }
 }

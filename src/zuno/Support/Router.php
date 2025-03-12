@@ -9,7 +9,7 @@ use App\Http\Kernel;
 use Zuno\DI\Container;
 use Zuno\Middleware\Contracts\Middleware as ContractsMiddleware;
 
-class Route extends Kernel
+class Router extends Kernel
 {
     /**
      * Holds the registered routes.
@@ -24,13 +24,6 @@ class Route extends Kernel
      * @var array
      */
     protected array $urlParams = [];
-
-    /**
-     * The current request instance.
-     *
-     * @var Request
-     */
-    public Request $request;
 
     /**
      * Holds the registered named routes.
@@ -50,30 +43,13 @@ class Route extends Kernel
     protected static array $routeMiddlewares = [];
 
     /**
-     * Magic method to handle static method calls for route registration.
-     *
-     * @param string $name The method name.
-     * @param array $arguments The method arguments.
-     * @return Route
-     * @throws \Exception If method name is not supported.
-     */
-    public static function __callStatic($name, $arguments): Route
-    {
-        return match ($name) {
-            'get' => (new Route())->getRoute($arguments[0], $arguments[1]),
-            'post' => (new Route())->postRoute($arguments[0], $arguments[1]),
-            default => throw new \Exception($name . ' method not found', true)
-        };
-    }
-
-    /**
      * Registers a GET route with a callback.
      *
      * @param string $path The route path.
      * @param callable $callback The callback for the route.
-     * @return Route
+     * @return self
      */
-    public function getRoute($path, $callback): Route
+    public function get($path, $callback): self
     {
         self::$routes['get'][$path] = $callback;
         $this->currentRoutePath = $path;
@@ -86,9 +62,9 @@ class Route extends Kernel
      *
      * @param string $path The route path.
      * @param callable $callback The callback for the route.
-     * @return Route
+     * @return self
      */
-    public function postRoute($path, $callback): Route
+    public function post($path, $callback): self
     {
         self::$routes['post'][$path] = $callback;
         $this->currentRoutePath = $path;
@@ -100,9 +76,9 @@ class Route extends Kernel
      * Assigns a name to the last registered route.
      *
      * @param string $name The name for the route.
-     * @return Route
+     * @return self
      */
-    public function name(string $name): Route
+    public function name(string $name): self
     {
         if ($this->currentRoutePath) {
             self::$namedRoutes[$name] = $this->currentRoutePath;
@@ -118,7 +94,7 @@ class Route extends Kernel
      * @param array $params The parameters for the route.
      * @return string|null The generated URL or null if the route doesn't exist.
      */
-    public static function route(string $name, mixed $params = []): ?string
+    public function route(string $name, mixed $params = []): ?string
     {
         if (!isset(self::$namedRoutes[$name])) {
             return null;
@@ -151,7 +127,7 @@ class Route extends Kernel
      * @return Route
      * @throws \Exception If the middleware is not defined.
      */
-    public function middleware(string|array $keys): Route
+    public function middleware(string|array $keys): self
     {
         if ($this->currentRoutePath) {
             foreach ((array) $keys as $key) {
@@ -230,12 +206,11 @@ class Route extends Kernel
      * Applies middleware to the route
      * @return Route
      */
-    private function applyRouteMiddleware($middleware, $currentMiddleware): void
+    private function applyRouteMiddleware($currentMiddleware): void
     {
         foreach ($currentMiddleware as $key) {
             [$name, $params] = array_pad(explode(':', $key, 2), 2, null);
             $params = $params ? explode(',', $params) : [];
-
             if (!isset($this->routeMiddleware[$name])) {
                 throw new \Exception("Middleware [$name] is not defined");
             }
@@ -245,7 +220,7 @@ class Route extends Kernel
             if (!$middlewareInstance instanceof ContractsMiddleware) {
                 throw new \Exception("Unresolved dependency $middlewareClass", 1);
             }
-            $middleware->applyMiddleware($middlewareInstance);
+            $this->applyMiddleware($middlewareInstance, $params);
         }
     }
 
@@ -253,17 +228,16 @@ class Route extends Kernel
      * Resolves and executes the route callback with middleware and dependencies.
      * @param Container $container
      * @param Request $request
-     * @param Middleware $middleware
      * @throws \ReflectionException If there is an issue with reflection.
      * @throws \Exception
      * @return Response
      */
-    public function resolve(Container $container, Request $request, Middleware $middleware)
+    public function resolve(Container $container, Request $request)
     {
         $currentMiddleware = $this->getCurrentRouteMiddleware($request);
 
         if ($currentMiddleware) {
-            $this->applyRouteMiddleware($middleware, $currentMiddleware);
+            $this->applyRouteMiddleware($currentMiddleware);
         }
         $callback = $this->getCallback($request);
         if (!$callback) abort(404);
@@ -316,7 +290,7 @@ class Route extends Kernel
             return $result;
         };
 
-        $response = $middleware->handle($request, $finalHandler);
+        $response = $this->handle($request, $finalHandler);
 
         return $response;
     }

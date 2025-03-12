@@ -5,7 +5,7 @@ namespace Zuno\Console\Commands;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Zuno\Http\Controllers\Controller; // Use Zuno's Controller for view compilation
+use Zuno\Http\Controllers\Controller;
 
 class ViewCacheCommand extends Command
 {

@@ -2,141 +2,336 @@
 
 namespace Zuno;
 
-use App\Http\Kernel;
-use Zuno\Support\Route;
-use Zuno\Middleware\Middleware;
 use Zuno\Http\Response;
-use Zuno\Http\Request;
 use Zuno\Http\Exceptions\HttpException;
 use Zuno\DI\Container;
-use Zuno\Config\Config;
-use App\Providers\AppServiceProvider;
-use Zuno\Middleware\Contracts\Middleware as ContractsMiddleware;
+use Zuno\Support\Router;
 
-class Application extends AppServiceProvider
+class Application extends Container
 {
     /**
-     * @var Route
+     * The Zuno framework version.
+     *
+     * @var string
      */
-    public Route $route;
+    const VERSION = '4.1';
 
     /**
-     * @var Request
+     * The base path for the Laravel installation.
+     *
+     * @var string
      */
-    public Request $request;
+    protected $basePath;
 
     /**
-     * @var Container
+     * Indicates if the application has been bootstrapped before.
+     *
+     * @var bool
      */
-    protected Container $container;
+    protected $hasBeenBootstrapped = false;
 
     /**
-     * @var Middleware
+     * Indicates if the application has "booted".
+     *
+     * @var bool
      */
-    protected Middleware $middleware;
+    protected $booted = false;
 
     /**
-     * @var array<string>
+     * The custom bootstrap path defined by the developer.
+     *
+     * @var string
      */
-    private $globalMiddlewares = [];
+    protected $bootstrapPath;
 
     /**
-     * Constructs the Application instance.
-     * Initializes the dependency resolver, route handler, and middleware handler.
+     * Resources path where the views are located
+     *
+     * @var string
+     */
+    protected $resourcesPath;
+
+    /**
+     * The custom application path defined by the developer.
+     *
+     * @var string
+     */
+    protected $appPath;
+
+    /**
+     * The custom configuration path defined by the developer.
+     *
+     * @var string
+     */
+    protected $configPath;
+
+    /**
+     * The custom database path defined by the developer.
+     *
+     * @var string
+     */
+    protected $databasePath;
+
+    /**
+     * The custom public / web path defined by the developer.
+     *
+     * @var string
+     */
+    protected $publicPath;
+
+    /**
+     * The custom storage path defined by the developer.
+     *
+     * @var string
+     */
+    protected $storagePath;
+
+    /**
+     * The environment file to load during bootstrapping.
+     *
+     * @var string
+     */
+    protected $environmentFile = '.env';
+
+    /**
+     * Indicates if the application is running in the console.
+     *
+     * @var bool|null
+     */
+    protected $isRunningInConsole;
+
+    /**
+     * Application constructor.
+     *
+     * Initializes the application by setting necessary folder paths,
+     * determining if it's running in the console, and setting the instance.
      */
     public function __construct()
     {
-        $this->middleware = new Middleware();
-        $this->container = new Container();
-        $this->route = new Route();
-        $this->request = request();
-
-        // Bootstraping application services
-        $this->register();
-
-        // Loading application configuration files
-        if (!file_exists(storage_path('cache/config.php'))) {
-            Config::initialize();
-            Config::loadFromCache();
-        }
+        $this->setNecessaryFolderPath();
+        $this->runningInConsole();
+        $this->hasBeenBootstrapped();
+        $this->isBooted();
+        parent::setInstance($this);
     }
 
     /**
-     * Creates and initializes a new Kernel instance.
+     * Configures the application instance.
      *
-     * This method instantiates a new `Kernel` object and assigns its middleware
-     * to the `$globalMiddlewares` array for later processing.
-     * @return Application Returns the current Application instance.
+     * @return \Zuno\ApplicationBuilder
      */
-    public function handle(): Application
+    public static function configure($basePath = null)
     {
-        $kernel = new Kernel;
-        foreach ($kernel->middleware as $middlewareClass) {
-            $this->globalMiddlewares[] = $middlewareClass;
-        }
-        return $this;
+        $app = new static();
+        self::setInstance($app);
+
+        return (new \Zuno\ApplicationBuilder($app, $basePath))
+            ->withEnvironments()
+            ->withAppSession()
+            ->withKernels()
+            ->withBootedProviders()
+            ->withBootingProviders()
+            ->withEloquentServices()
+            ->withExceptionHandler();
     }
 
     /**
-     * Sends the request through all registered global middlewares.
+     * Get the application base path
      *
-     * This method iterates through the `$globalMiddlewares` array and applies each middleware.
-     * It ensures that every middleware implements the `ContractsMiddleware` interface before applying it.
-     * If a middleware does not implement the required interface, an exception is thrown.
+     * @return string
+     */
+    public function getBasePath(): string
+    {
+        return $this->basePath = base_path();
+    }
+
+    /**
+     * Binds all of the application paths in the container.
      *
-     * @throws Exception If a middleware does not implement ContractsMiddleware.
      * @return void
      */
-    public function send(): Response
+    protected function setNecessaryFolderPath()
     {
-        $request = $this->request;
-        $finalHandler = function ($request) {
-            return new Response();
-        };
+        $this->basePath();
+        $this->configPath();
+        $this->appPath();
+        $this->bootstrapPath();
+        $this->databasePath();
+        $this->publicPath();
+        $this->storagePath();
+        $this->resourcesPath();
+    }
 
-        foreach ($this->globalMiddlewares as $middlewareClass) {
-            $middlewareInstance = new $middlewareClass();
-            if ($middlewareInstance instanceof ContractsMiddleware) {
-                $finalHandler = function (Request $request) use ($middlewareInstance, $finalHandler) {
-                    return $middlewareInstance($request, $finalHandler);
-                };
-            } else {
-                throw new \Exception("Unresolved dependency $middlewareClass", 1);
-            }
+    /**
+     * Returns the resources path.
+     *
+     * @return string
+     */
+    public function resourcesPath(): string
+    {
+        return $this->resourcesPath = base_path('resources');
+    }
+
+    /**
+     * Returns the bootstrap path.
+     *
+     * @return string
+     */
+    public function bootstrapPath(): string
+    {
+        return $this->bootstrapPath = base_path('bootstrap');
+    }
+
+    /**
+     * Returns the database path.
+     *
+     * @return string
+     */
+    public function databasePath(): string
+    {
+        return $this->databasePath = base_path('database');
+    }
+
+    /**
+     * Returns the public path.
+     *
+     * @return string
+     */
+    public function publicPath(): string
+    {
+        return $this->publicPath = base_path('public');
+    }
+
+    /**
+     * Returns the storage path.
+     *
+     * @return string
+     */
+    public function storagePath(): string
+    {
+        return $this->storagePath = base_path('storage');
+    }
+
+    /**
+     * Returns the application path.
+     *
+     * @return string
+     */
+    public function appPath(): string
+    {
+        return $this->appPath = $this->basePath();
+    }
+
+    /**
+     * Returns the base path of the application.
+     *
+     * @return string
+     */
+    public function basePath(): string
+    {
+        return $this->basePath = $this->getBasePath();
+    }
+
+    /**
+     * Returns the configuration path.
+     *
+     * @return string
+     */
+    public function configPath(): string
+    {
+        return $this->configPath = base_path('config');
+    }
+
+    /**
+     * Determines if the application is running in the console.
+     *
+     * @return bool
+     */
+    public function runningInConsole()
+    {
+        if ($this->isRunningInConsole === null) {
+            $this->isRunningInConsole = env('APP_RUNNING_IN_CONSOLE') ?? (\PHP_SAPI === 'cli' || \PHP_SAPI === 'phpdbg');
         }
 
-        return $this->middleware->handle($request, $finalHandler);
+        return $this->isRunningInConsole;
     }
 
     /**
-     * Apply global middleware to the application.
+     * Checks if the application has been bootstrapped.
      *
-     * Delegates the application of middleware to the middleware handler.
-     *
-     * @param ContractsMiddleware $middleware The middleware to be applied.
-     * @return mixed The result of applying the middleware.
+     * @return bool
      */
-    public function applyMiddleware(ContractsMiddleware $middleware)
+    public function hasBeenBootstrapped(): bool
     {
-        return $this->middleware->applyMiddleware($middleware);
+        return $this->hasBeenBootstrapped;
     }
 
     /**
-     * Run the application and resolve the route.
-     * Executes the application logic by resolving the route
+     * Checks if the application has booted.
+     *
+     * @return bool
+     */
+    public function isBooted(): bool
+    {
+        return $this->booted;
+    }
+
+    /**
+     * Bootstraps the application.
+     *
+     * Sets the `hasBeenBootstrapped` flag to true if not already set.
      *
      * @return void
-     * @throws \ReflectionException If there is an issue with reflection during route resolution.
      */
-    public function run(): void
+    public function bootstrap(): void
+    {
+        if ($this->hasBeenBootstrapped) {
+            return;
+        }
+
+        $this->hasBeenBootstrapped = true;
+    }
+
+    /**
+     * Boots the application.
+     *
+     * Sets the `booted` flag to true if not already set.
+     *
+     * @return void
+     */
+    public function boot(): void
+    {
+        if ($this->booted) {
+            return;
+        }
+
+        $this->booted = true;
+    }
+
+    /**
+     * Resolve the given type from the container.
+     *
+     * @param  string  $abstract
+     * @param  array  $parameters
+     * @return mixed
+     */
+    public function make($abstract, array $parameters = [])
+    {
+        return parent::get($abstract, $parameters);
+    }
+
+    /**
+     * Dispatches the application request.
+     *
+     * Resolves the request using the router and sends the response.
+     * Handles any HTTP exceptions that may occur during the process.
+     *
+     * @return void
+     */
+    public function dispatch(): void
     {
         try {
-            $this->dispatch();
-            $response = $this->route->resolve(
-                $this->container,
-                $this->request,
-                $this->middleware
-            );
+            $response = app(Router::class)->resolve($this, request());
 
             if ($response instanceof \Zuno\Http\Response) {
                 $response->send();
@@ -146,10 +341,5 @@ class Application extends AppServiceProvider
         } catch (HttpException $exception) {
             Response::dispatchHttpException($exception);
         }
-    }
-
-    private function dispatch(): void
-    {
-        require base_path() . '/routes/web.php';
     }
 }

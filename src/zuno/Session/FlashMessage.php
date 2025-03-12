@@ -4,8 +4,6 @@ namespace Zuno\Session;
 
 class FlashMessage
 {
-    private static $messages = [];
-
     /**
      * Add a flash message.
      *

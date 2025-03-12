@@ -2,10 +2,10 @@
 
 namespace Zuno\Auth\Security;
 
+use Zuno\Support\Facades\Hash;
 use App\Models\User;
-use Zuno\Auth\Security\Hash;
 
-trait Auth
+class Authenticate
 {
     /**
      * Attempt to log the user in with email and password.
@@ -13,7 +13,7 @@ trait Auth
      * @param array $credentials
      * @return bool
      */
-    public static function try(array $credentials = []): bool
+    public function try(array $credentials = []): bool
     {
         $email = $credentials['email'] ?? '';
         $password = $credentials['password'] ?? '';
@@ -25,7 +25,6 @@ trait Auth
         $user = User::where('email', $email)->orWhere('username', $email)->first();
 
         if ($user && Hash::check($password, $user->password)) {
-            // Set the user as the authenticated user
             self::setUser($user);
             return true;
         }
@@ -38,7 +37,7 @@ trait Auth
      *
      * @return \Zuno\Models\User|null
      */
-    public static function user()
+    public function user()
     {
         if (isset($_SESSION['user'])) {
             return User::find($_SESSION['user']->id);
@@ -52,7 +51,7 @@ trait Auth
      *
      * @return bool
      */
-    public static function check()
+    public function check()
     {
         return self::user() !== null;
     }
@@ -60,7 +59,7 @@ trait Auth
     /**
      * Log the user out by clearing the session or token.
      */
-    public static function logout()
+    public function logout()
     {
         unset($_SESSION['user']);
     }
@@ -70,7 +69,7 @@ trait Auth
      *
      * @param \Zuno\Models\User $user
      */
-    private static function setUser(User $user)
+    private function setUser(User $user)
     {
         $_SESSION['user'] = $user;
     }
@@ -82,7 +81,7 @@ trait Auth
      *
      * @return bool
      */
-    public static function viaRemember(): bool
+    public function viaRemember(): bool
     {
         return false;
     }

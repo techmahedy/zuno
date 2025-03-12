@@ -103,7 +103,7 @@ trait RequestParser
      */
     public function query(): ?string
     {
-        return $_SERVER['QUERY_STRING'];
+        return $_SERVER['QUERY_STRING'] ?? '';
     }
 
     /**

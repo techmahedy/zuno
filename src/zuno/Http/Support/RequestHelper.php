@@ -2,8 +2,7 @@
 
 namespace Zuno\Http\Support;
 
-use Zuno\Auth\Security\Auth;
-use Zuno\Support\Session;
+use Zuno\Support\Facades\Auth;
 
 trait RequestHelper
 {

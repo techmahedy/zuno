@@ -3,10 +3,9 @@
 namespace Zuno\Http;
 
 use Zuno\Session\Input;
-use Zuno\Http\Response as RedirectResponse;
-use Zuno\Http\Controllers\Controller;
+use Zuno\Http\Response;
 
-class Redirect extends Response
+class RedirectResponse extends Response
 {
     /**
      * Redirect to a specified URL.
@@ -63,7 +62,7 @@ class Redirect extends Response
      *
      * @param string $name The route name.
      * @param array $params The parameters for the route.
-     * @return RedirectResponse The response object with the redirect header.
+     * @return Response The response object with the redirect header.
      */
     public function route(string $name, array $params = []): RedirectResponse
     {
@@ -87,11 +86,11 @@ class Redirect extends Response
      */
     protected function resolveRouteUrl(string $name, array $params = []): ?string
     {
-        if (!isset(\Zuno\Support\Route::$namedRoutes[$name])) {
+        if (!isset(\Zuno\Support\Router::$namedRoutes[$name])) {
             return null;
         }
 
-        $route = \Zuno\Support\Route::$namedRoutes[$name];
+        $route = \Zuno\Support\Router::$namedRoutes[$name];
 
         // Replace route parameters with actual values
         foreach ($params as $key => $value) {

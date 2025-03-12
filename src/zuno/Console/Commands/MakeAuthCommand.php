@@ -60,8 +60,9 @@ class MakeAuthCommand extends Command
     private function appendRoutes(string $routesPath)
     {
         $authRoutes = <<<EOT
+
 // Auth Routes
-Route::get('/home', [\App\Http\Controllers\HomeController::class, 'index'])->name('dashboard')->middleware('auth');
+Route::get('/home', [\App\Http\Controllers\HomeController::class, 'home'])->name('dashboard')->middleware('auth');
 
 Route::get('/login', [\App\Http\Controllers\Auth\LoginController::class, 'index'])->name('login')->middleware('guest');
 Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login'])->middleware('guest');
@@ -106,10 +107,9 @@ EOT;
                         <li class="nav-item"><a class="nav-link text-white me-3" href="{{ route('dashboard') }}">Home</a></li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle text-white" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                                {{ Zuno\Auth\Security\Auth::user()->username }}
+                                {{ Zuno\Support\Facades\Auth::user()->name }}
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="{{ route('profile', Zuno\Auth\Security\Auth::user()->username) }}">Profile</a></li>
                                 <li>
                                     <form action="{{ route('logout') }}" method="POST">@csrf
                                         <button type="submit" class="dropdown-item">Logout</button>
@@ -146,7 +146,7 @@ EOT;
     {
         return <<<EOT
 @extends('layouts.app')
-@section('title', 'Dashboard')
+@section('title') Dashboard
 @section('content')
     <div class="card shadow-lg mb-4">
         <div class="card-header bg-primary text-white">
@@ -155,7 +155,7 @@ EOT;
         <div class="card-body">
             <p class="fw-bold fs-5">
                 You are logged in as
-                <span class="text-success fw-bold">{{ Zuno\Auth\Security\Auth::user()->email }}</span>
+                <span class="text-success fw-bold">{{ Zuno\Support\Facades\Auth::user()->email }}</span>
             </p>
         </div>
     </div>
@@ -171,7 +171,7 @@ EOT;
 namespace App\Http\Controllers\Auth;
 
 use Zuno\Http\Request;
-use Zuno\Auth\Security\Auth;
+use Zuno\Support\Facades\Auth;
 use App\Models\User;
 use App\Http\Controllers\Controller;
 
@@ -277,7 +277,7 @@ EOT;
     {
         return <<<EOT
 @extends('layouts.app')
-@section('title', 'Login')
+@section('title') Login
 @section('content')
     <div class="card shadow-lg mb-4">
         <div class="card-header bg-primary text-white">
@@ -306,7 +306,7 @@ EOT;
     {
         return <<<EOT
 @extends('layouts.app')
-@section('title', 'Register')
+@section('title') Register
 @section('content')
     <div class="card shadow-lg mb-4">
         <div class="card-header bg-primary text-white">

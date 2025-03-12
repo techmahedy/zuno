@@ -12,7 +12,7 @@ use App\Models\User;
  * It provides a fluent interface for setting up email details (e.g., recipients, CC, BCC, attachments)
  * and sending the email using the configured driver.
  */
-class Mail
+class MailService
 {
     /**
      * The mail driver used to send emails.
@@ -33,7 +33,7 @@ class Mail
      *
      * @param MailDriverInterface $driver The mail driver to use for sending emails.
      */
-    public function __construct(MailDriverInterface $driver)
+    public function __construct(?MailDriverInterface $driver = null)
     {
         $this->driver = $driver;
         $this->message = new Mailable();
@@ -47,7 +47,7 @@ class Mail
      * @param MailDriverInterface $driver The mail driver to use.
      * @return self A new instance of the Mail class.
      */
-    public static function driver(MailDriverInterface $driver)
+    public function driver(MailDriverInterface $driver)
     {
         return new self($driver);
     }
@@ -61,7 +61,7 @@ class Mail
      * @param User $user The user to send the email to.
      * @return self A new instance of the Mail class.
      */
-    public static function to(User $user)
+    public function to(User $user)
     {
         // Create a new Mail instance with the resolved driver
         $mail = new self(self::resolveDriver());
@@ -99,7 +99,6 @@ class Mail
 
         if (isset($attachment[0])) {
             foreach ($attachment as $filePath) {
-                $filePath = base_path(removeBaseUrl($filePath));
                 if (!file_exists($filePath)) {
                     throw new \Exception("$filePath not found");
                 }
@@ -111,7 +110,6 @@ class Mail
             }
         } else {
             foreach ($attachment as $filePath => $fileDetails) {
-                $filePath = base_path(removeBaseUrl($filePath));
                 if (!file_exists($filePath)) {
                     throw new \Exception("$filePath not found");
                 }

@@ -11,7 +11,6 @@ class Middleware
 {
     /**
      * Closure that handles the request processing.
-     *
      * @var Closure(Request, Closure): Response
      */
     public Closure $start;
@@ -30,13 +29,13 @@ class Middleware
      * @param ContractsMiddleware $middleware The middleware to apply.
      * @return void
      */
-    public function applyMiddleware(ContractsMiddleware $middleware): void
+    public function applyMiddleware(ContractsMiddleware $middleware, array|string $params = []): void
     {
         $next = $this->start;
-        $this->start = function (Request $request, Closure $finalHandler) use ($middleware, $next) {
+        $this->start = function (Request $request, Closure $finalHandler) use ($middleware, $next, $params) {
             return $middleware($request, function (Request $request) use ($next, $finalHandler) {
                 return $next($request, $finalHandler);
-            });
+            }, ...$params);
         };
     }
 

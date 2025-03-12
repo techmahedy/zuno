@@ -13,7 +13,7 @@ class Encryption
      * @return string Returns a base64-encoded string containing the encrypted data and IV.
      * @throws RuntimeException If encryption fails.
      */
-    public static function encrypt(mixed $data): string
+    public function encrypt(mixed $data): string
     {
         $cipher = config('app.cipher') ?? 'AES-256-CBC';
 
@@ -42,7 +42,7 @@ class Encryption
      * @return mixed Returns the decrypted data as a string or array (if the original data was an array).
      * @throws RuntimeException If decryption fails.
      */
-    public static function decrypt(string $encryptedData): mixed
+    public function decrypt(string $encryptedData): mixed
     {
         $cipher = config('app.cipher') ?? 'AES-256-CBC';
 

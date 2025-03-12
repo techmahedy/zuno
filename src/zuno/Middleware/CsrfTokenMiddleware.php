@@ -2,10 +2,11 @@
 
 namespace Zuno\Middleware;
 
-use Closure;
-use Zuno\Http\Request;
-use Zuno\Http\Response;
 use Zuno\Middleware\Contracts\Middleware;
+use Zuno\Http\Response;
+use Zuno\Http\Request;
+use Zuno\Http\Exceptions\HttpException;
+use Closure;
 
 class CsrfTokenMiddleware implements Middleware
 {
@@ -23,11 +24,14 @@ class CsrfTokenMiddleware implements Middleware
     public function __invoke(Request $request, Closure $next): Response
     {
         if ($request->isPost() && !$request->has('_token')) {
-            throw new \Exception("CSRF Token not found", 422);
+            throw new HttpException(422, "CSRF Token not found");
         }
 
-        if ($request->isPost() && ($_SESSION['_token'] !== $request->_token)) {
-            throw new \Exception("CSRF Token mismatched", 422);
+        if (
+            $request->isPost() &&
+            ($request->session()->token() !== $request->_token)
+        ) {
+            throw new HttpException(422, "Unauthorized, CSRF Token mismatched");
         }
 
         return $next($request);

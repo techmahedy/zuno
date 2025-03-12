@@ -4,7 +4,7 @@ namespace Zuno\Http\Support;
 
 use Zuno\Http\Exceptions\HttpException;
 
-class Abort
+class RequestAbortion
 {
     /**
      * Abort the request with a specific HTTP status code and optional message.
@@ -13,7 +13,7 @@ class Abort
      * @param string $message The optional error message.
      * @throws HttpException
      */
-    public static function abort(int $code, string $message = ''): void
+    public function abort(int $code, string $message = ''): void
     {
         throw new HttpException($code, $message);
     }
@@ -26,7 +26,7 @@ class Abort
      * @param string $message The optional error message.
      * @throws HttpException
      */
-    public static function abortIf(bool $condition, int $code, string $message = ''): void
+    public function abortIf(bool $condition, int $code, string $message = ''): void
     {
         if ($condition) {
             self::abort($code, $message);

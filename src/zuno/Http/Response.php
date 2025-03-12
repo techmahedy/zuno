@@ -4,7 +4,6 @@ namespace Zuno\Http;
 
 use Zuno\Http\Response\HttpStatus;
 use Zuno\Http\Exceptions\HttpException;
-use Zuno\Http\Controllers\Controller;
 
 /**
  * The Response class handles HTTP responses, including setting headers, status codes,
@@ -41,7 +40,7 @@ class Response implements HttpStatus
      * @param int $statusCode The HTTP status code (default: 200).
      * @param array<string, string> $headers The HTTP headers (default: empty array).
      */
-    public function __construct(mixed $body = '', int $statusCode = 200, array $headers = [])
+    public function __construct(mixed $body = null, int $statusCode = 200, array $headers = [])
     {
         $this->body = $body;
         $this->statusCode = $statusCode;
@@ -206,10 +205,8 @@ class Response implements HttpStatus
         $statusCode = $exception->getStatusCode();
         $message = $exception->getMessage() ?: 'An error occurred.';
 
-        // Set the HTTP response code
         http_response_code($statusCode);
 
-        // Render a JSON response for API requests
         if (self::isJsonRequest()) {
             echo json_encode([
                 'error' => [
@@ -220,7 +217,6 @@ class Response implements HttpStatus
             return;
         }
 
-        // Render an HTML error page for web requests
         self::renderErrorPage($statusCode, $message);
     }
 
@@ -248,14 +244,11 @@ class Response implements HttpStatus
      */
     protected static function renderErrorPage(int $statusCode, string $message): void
     {
-        // Path to the error page template
         $errorPage = base_path() . "/vendor/zuno/zuno/src/zuno/Support/View/errors/{$statusCode}.blade.php";
 
-        // Include the error page if it exists
         if (file_exists($errorPage)) {
             include $errorPage;
         } else {
-            // If the error page does not exist, throw an HTTP exception
             throw new HttpException($statusCode, $message);
         }
     }
@@ -293,8 +286,23 @@ class Response implements HttpStatus
      */
     public function view(string $view, array $data = []): Response
     {
-        $content = $this->render($view, $data);
+        $content = $this->renderView($view, $data);
 
-        return new Response($content);
+        $this->body = $content;
+
+        return $this;
+    }
+
+    public function renderView(string $view, array $data = []): string
+    {
+        $viewPath = str_replace('.', '/', $view);
+
+        extract($data);
+
+        ob_start();
+
+        include base_path("resources/views/{$viewPath}.blade.php");
+
+        return ob_get_clean();
     }
 }

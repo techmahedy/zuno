@@ -19,7 +19,7 @@ trait Directives
 
     public function compileAuth()
     {
-        return "<?php if(\Zuno\Auth\Security\Auth::check()): ?>";
+        return "<?php if(\Zuno\Support\Facades\Auth::check()): ?>";
     }
 
     public function compileEndauth()
@@ -29,7 +29,7 @@ trait Directives
 
     public function compileGuest()
     {
-        return "<?php if(!\Zuno\Auth\Security\Auth::check()): ?>";
+        return "<?php if(!\Zuno\Support\Facades\Auth::check()): ?>";
     }
 
     public function compileEndguest()
