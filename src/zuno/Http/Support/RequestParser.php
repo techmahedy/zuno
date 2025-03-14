@@ -123,7 +123,7 @@ trait RequestParser
      */
     public function method(): string
     {
-        return $this->server['REQUEST_METHOD'];
+        return $this->server['REQUEST_METHOD'] ?? 'CLI';
     }
 
     /**

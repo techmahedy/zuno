@@ -1,6 +1,5 @@
 <?php
 
-use Zuno\Application;
 use Zuno\Support\Session;
 use Zuno\Support\Facades\Hash;
 use Zuno\Support\Facades\Auth;
@@ -152,6 +151,7 @@ function route(string $name, mixed $params = []): ?string
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $basePath = rtrim($scheme . '://' . $host, '/');
     $routePath = app('route')->route($name, $params);
+
     return $routePath ? $basePath . '/' . ltrim($routePath, '/') : null;
 }
 
@@ -164,8 +164,8 @@ function route(string $name, mixed $params = []): ?string
  */
 function config(string $key, ?string $default = null): null|string|array
 {
-    if (php_sapi_name() === 'cli' || defined('STDIN')) {
-        return \Zuno\Config\Config::get($key) ?? $default;
+    if (app()->runningInConsole()) {
+        return Config::get($key) ?? $default;
     }
 
     return Config::get($key) ?? $default;
@@ -199,7 +199,7 @@ function flash(): FlashMessage
  */
 function base_path(string $path = ''): string
 {
-    if (php_sapi_name() === 'cli' || defined('STDIN')) {
+    if (app()->runningInConsole()) {
         return realpath(__DIR__ . '/../../../../../../') . ($path ? DIRECTORY_SEPARATOR . $path : '');
     }
 
@@ -214,7 +214,7 @@ function base_path(string $path = ''): string
  */
 function base_url(string $path = ''): string
 {
-    if (php_sapi_name() === 'cli' || defined('STDIN')) {
+    if (app()->runningInConsole()) {
         $appUrl = getenv('APP_URL') ?: 'http://localhost';
         return rtrim($appUrl, '/') . ($path ? '/' . ltrim($path, '/') : '');
     }
@@ -227,21 +227,6 @@ function base_url(string $path = ''): string
 }
 
 /**
- * Remove base URL from the URL
- *
- * @param string
- * @return string
- */
-function removeBaseUrl($url)
-{
-    $baseUrl = base_url();
-
-    $fileName = str_replace($baseUrl, '', $url);
-
-    return ltrim($fileName, '/');
-}
-
-/**
  * Get the storage path of the application.
  *
  * @param string $path An optional path to append to the storage path.
@@ -249,10 +234,6 @@ function removeBaseUrl($url)
  */
 function storage_path(string $path = ''): string
 {
-    if (php_sapi_name() === 'cli' || defined('STDIN')) {
-        return base_url('storage') . ($path ? DIRECTORY_SEPARATOR . $path : '');
-    }
-
     return app()->storagePath($path);
 }
 
@@ -264,9 +245,6 @@ function storage_path(string $path = ''): string
  */
 function public_path(string $path = ''): string
 {
-    if (php_sapi_name() === 'cli' || defined('STDIN')) {
-        return base_url('public') . ($path ? DIRECTORY_SEPARATOR . $path : '');
-    }
     return app()->publicPath($path);
 }
 

@@ -3,26 +3,16 @@
 namespace Zuno;
 
 use Zuno\Support\Router;
-use Zuno\Session\ConfigSession;
 use Zuno\Middleware\Contracts\Middleware as ContractsMiddleware;
 use Zuno\Http\Response;
 use Zuno\Http\Request;
-use Zuno\Error\ErrorHandler;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Illuminate\Container\Container;
-use Dotenv\Dotenv;
 use App\Http\Kernel;
 
 class ApplicationBuilder
 {
-    /**
-     * The base path of the application.
-     *
-     * @var string
-     */
-    private string $basePath;
-
     /**
      * ApplicationBuilder constructor.
      *
@@ -32,69 +22,9 @@ class ApplicationBuilder
      * @param Application $app The application instance.
      * @param string $basePath The base path of the application.
      */
-    public function __construct(protected Application $app, $basePath)
+    public function __construct(protected Application $app)
     {
-        $this->basePath = $basePath;
         $this->instantiateSingletonClass();
-    }
-
-    /**
-     * Load environment variables from the .env file.
-     *
-     * @return self
-     */
-    public function withEnvironments(): self
-    {
-        $dotenv = Dotenv::createImmutable($this->basePath);
-        $dotenv->load();
-
-        return $this;
-    }
-
-    /**
-     * Register and bootstrap service providers.
-     *
-     * @return self
-     */
-    public function withBootedProviders(): self
-    {
-        foreach (config('app.providers') as $provider) {
-            $providerInstance = new $provider($this->app);
-            $providerInstance->register();
-        }
-
-        $this->app->bootstrap();
-
-        return $this;
-    }
-
-    /**
-     * Configure application session.
-     *
-     * @return self
-     */
-    public function withAppSession(): self
-    {
-        ConfigSession::configAppSession();
-
-        return $this;
-    }
-
-    /**
-     * Boot service providers.
-     *
-     * @return self
-     */
-    public function withBootingProviders(): self
-    {
-        foreach (config('app.providers') as $provider) {
-            $providerInstance = new $provider($this->app);
-            $providerInstance->boot();
-        }
-
-        $this->app->boot();
-
-        return $this;
     }
 
     /**
@@ -128,18 +58,6 @@ class ApplicationBuilder
 
         $response = $kernel->handle($request, $finalHandler);
         $response->send();
-
-        return $this;
-    }
-
-    /**
-     * Register exception handler.
-     *
-     * @return self
-     */
-    public function withExceptionHandler(): self
-    {
-        ErrorHandler::handle();
 
         return $this;
     }

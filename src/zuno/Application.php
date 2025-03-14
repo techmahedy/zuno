@@ -2,143 +2,164 @@
 
 namespace Zuno;
 
+use Zuno\Config\Config;
+use Zuno\Support\Router;
+use Zuno\Providers\ServiceProvider;
 use Zuno\Http\Response;
 use Zuno\Http\Exceptions\HttpException;
+use Zuno\Error\ErrorHandler;
 use Zuno\DI\Container;
-use Zuno\Support\Router;
+use Zuno\Providers\CoreProviders;
 
 class Application extends Container
 {
-    /**
-     * The Zuno framework version.
-     *
-     * @var string
-     */
-    const VERSION = '4.1';
+    use CoreProviders;
 
     /**
-     * The base path for the Laravel installation.
-     *
-     * @var string
+     * The current version of the Zuno framework.
      */
+    const VERSION = '4.3';
+
     protected $basePath;
-
-    /**
-     * Indicates if the application has been bootstrapped before.
-     *
-     * @var bool
-     */
     protected $hasBeenBootstrapped = false;
-
-    /**
-     * Indicates if the application has "booted".
-     *
-     * @var bool
-     */
     protected $booted = false;
-
-    /**
-     * The custom bootstrap path defined by the developer.
-     *
-     * @var string
-     */
     protected $bootstrapPath;
-
-    /**
-     * Resources path where the views are located
-     *
-     * @var string
-     */
     protected $resourcesPath;
-
-    /**
-     * The custom application path defined by the developer.
-     *
-     * @var string
-     */
     protected $appPath;
-
-    /**
-     * The custom configuration path defined by the developer.
-     *
-     * @var string
-     */
     protected $configPath;
-
-    /**
-     * The custom database path defined by the developer.
-     *
-     * @var string
-     */
     protected $databasePath;
-
-    /**
-     * The custom public / web path defined by the developer.
-     *
-     * @var string
-     */
     protected $publicPath;
-
-    /**
-     * The custom storage path defined by the developer.
-     *
-     * @var string
-     */
     protected $storagePath;
-
-    /**
-     * The environment file to load during bootstrapping.
-     *
-     * @var string
-     */
     protected $environmentFile = '.env';
-
-    /**
-     * Indicates if the application is running in the console.
-     *
-     * @var bool|null
-     */
     protected $isRunningInConsole;
+    protected $serviceProviders = [];
 
     /**
      * Application constructor.
      *
-     * Initializes the application by setting necessary folder paths,
-     * determining if it's running in the console, and setting the instance.
+     * Initializes the application by:
+     * - Setting the application instance in the container.
+     * - Loading configuration.
+     * - Registering and booting core service providers.
+     * - Setting up exception handling.
+     * - Defining necessary folder paths.
+     * - Detecting if the application is running in the console.
      */
     public function __construct()
     {
+        parent::setInstance($this);
+        Config::initialize();
+        $this->registerCoreProviders();
+        $this->bootCoreProviders();
+        $this->withExceptionHandler();
         $this->setNecessaryFolderPath();
         $this->runningInConsole();
-        $this->hasBeenBootstrapped();
-        $this->isBooted();
-        parent::setInstance($this);
     }
 
     /**
      * Configures the application instance.
      *
      * @return \Zuno\ApplicationBuilder
+     *   Returns an ApplicationBuilder instance for further configuration.
      */
-    public static function configure($basePath = null)
+    public static function configure()
     {
         $app = new static();
         self::setInstance($app);
 
-        return (new \Zuno\ApplicationBuilder($app, $basePath))
-            ->withEnvironments()
-            ->withAppSession()
+        return (new \Zuno\ApplicationBuilder($app))
             ->withKernels()
-            ->withBootedProviders()
-            ->withBootingProviders()
-            ->withEloquentServices()
-            ->withExceptionHandler();
+            ->withEloquentServices();
     }
 
     /**
-     * Get the application base path
+     * Registers the exception handler for the application.
+     *
+     * @return self
+     */
+    public function withExceptionHandler(): self
+    {
+        ErrorHandler::handle(); // Set up global exception handling
+        return $this;
+    }
+
+    /**
+     * Registers core service providers.
+     * If the application is running in the console, it skips registration.
+     * @return self
+     */
+    public function registerCoreProviders(): self
+    {
+        $coreProviders = $this->loadCoreProviders();
+        if ($this->runningInConsole()) {
+            return $this;
+        }
+        $this->registerProviders($coreProviders);
+        $this->registerProviders(config('app.providers'));
+
+        return $this;
+    }
+
+    /**
+     * Boots core service providers.
+     *
+     * If the application is running in the console, it skips booting.
+     *
+     * @return self
+     *   Returns the current instance for method chaining.
+     */
+    public function bootCoreProviders(): self
+    {
+        $coreProviders = $this->loadCoreProviders();
+        if ($this->runningInConsole()) {
+            return $this;
+        }
+        $this->bootProviders($coreProviders);
+        $this->bootProviders(config('app.providers'));
+
+        return $this;
+    }
+
+    /**
+     * Registers a list of service providers.
+     *
+     * @param array|null $providers
+     *   An array of service provider classes to register.
+     */
+    protected function registerProviders(?array $providers = []): void
+    {
+        foreach ($providers as $provider) {
+            $providerInstance = new $provider($this);
+            if ($providerInstance instanceof ServiceProvider) {
+                $providerInstance->register();
+                $this->serviceProviders[] = $providerInstance;
+            }
+        }
+    }
+
+    /**
+     * Boots a list of service providers.
+     *
+     * @param array|null $providers
+     *   An array of service provider classes to boot.
+     */
+    protected function bootProviders(?array $providers = []): void
+    {
+        foreach ($providers as $provider) {
+            $providerInstance = new $provider($this);
+            if ($providerInstance instanceof ServiceProvider && in_array($providerInstance, $this->serviceProviders)) {
+                $providerInstance->boot();
+                $this->bootstrap();
+                $this->bootServices();
+            }
+        }
+    }
+
+    /**
+     * Gets the base path of the application.
      *
      * @return string
+     *   The base path of the application.
      */
     public function getBasePath(): string
     {
@@ -146,76 +167,93 @@ class Application extends Container
     }
 
     /**
-     * Binds all of the application paths in the container.
-     *
-     * @return void
+     * Sets necessary folder paths for the application.
      */
-    protected function setNecessaryFolderPath()
+    protected function setNecessaryFolderPath(): void
     {
-        $this->basePath();
-        $this->configPath();
-        $this->appPath();
-        $this->bootstrapPath();
-        $this->databasePath();
-        $this->publicPath();
-        $this->storagePath();
-        $this->resourcesPath();
+        $this->basePath = $this->basePath();
+        $this->configPath = $this->configPath();
+        $this->appPath = $this->appPath();
+        $this->bootstrapPath = $this->bootstrapPath();
+        $this->databasePath = $this->databasePath();
+        $this->publicPath = $this->publicPath();
+        $this->storagePath = $this->storagePath();
+        $this->resourcesPath = $this->resourcesPath();
     }
 
     /**
-     * Returns the resources path.
+     * Returns the path for a given folder name.
+     *
+     * @param string $folder
+     *   The folder name.
+     * @return string
+     *   The full path to the folder.
+     */
+    protected function getPath(string $folder): string
+    {
+        return base_path($folder);
+    }
+
+    /**
+     * Gets the resources path.
      *
      * @return string
+     *   The path to the resources folder.
      */
     public function resourcesPath(): string
     {
-        return $this->resourcesPath = base_path('resources');
+        return $this->resourcesPath = $this->getPath('resources');
     }
 
     /**
-     * Returns the bootstrap path.
+     * Gets the bootstrap path.
      *
      * @return string
+     *   The path to the bootstrap folder.
      */
     public function bootstrapPath(): string
     {
-        return $this->bootstrapPath = base_path('bootstrap');
+        return $this->bootstrapPath = $this->getPath('bootstrap');
     }
 
     /**
-     * Returns the database path.
+     * Gets the database path.
      *
      * @return string
+     *   The path to the database folder.
      */
     public function databasePath(): string
     {
-        return $this->databasePath = base_path('database');
+        return $this->databasePath = $this->getPath('database');
     }
 
     /**
-     * Returns the public path.
+     * Gets the public path.
      *
      * @return string
+     *   The path to the public folder.
      */
     public function publicPath(): string
     {
-        return $this->publicPath = base_path('public');
+        return $this->publicPath = $this->getPath('public');
     }
 
     /**
-     * Returns the storage path.
+     * Gets the storage path.
      *
      * @return string
+     *   The path to the storage folder.
      */
     public function storagePath(): string
     {
-        return $this->storagePath = base_path('storage');
+        return $this->storagePath = $this->getPath('storage');
     }
 
     /**
-     * Returns the application path.
+     * Gets the application path.
      *
      * @return string
+     *   The path to the application folder.
      */
     public function appPath(): string
     {
@@ -223,9 +261,10 @@ class Application extends Container
     }
 
     /**
-     * Returns the base path of the application.
+     * Gets the base path of the application.
      *
      * @return string
+     *   The base path of the application.
      */
     public function basePath(): string
     {
@@ -233,21 +272,23 @@ class Application extends Container
     }
 
     /**
-     * Returns the configuration path.
+     * Gets the configuration path.
      *
      * @return string
+     *   The path to the configuration folder.
      */
     public function configPath(): string
     {
-        return $this->configPath = base_path('config');
+        return $this->configPath = $this->getPath('config');
     }
 
     /**
      * Determines if the application is running in the console.
      *
      * @return bool
+     *   True if running in the console, false otherwise.
      */
-    public function runningInConsole()
+    public function runningInConsole(): bool
     {
         if ($this->isRunningInConsole === null) {
             $this->isRunningInConsole = env('APP_RUNNING_IN_CONSOLE') ?? (\PHP_SAPI === 'cli' || \PHP_SAPI === 'phpdbg');
@@ -260,6 +301,7 @@ class Application extends Container
      * Checks if the application has been bootstrapped.
      *
      * @return bool
+     *   True if bootstrapped, false otherwise.
      */
     public function hasBeenBootstrapped(): bool
     {
@@ -270,6 +312,7 @@ class Application extends Container
      * Checks if the application has booted.
      *
      * @return bool
+     *   True if booted, false otherwise.
      */
     public function isBooted(): bool
     {
@@ -278,41 +321,29 @@ class Application extends Container
 
     /**
      * Bootstraps the application.
-     *
-     * Sets the `hasBeenBootstrapped` flag to true if not already set.
-     *
-     * @return void
      */
     public function bootstrap(): void
     {
-        if ($this->hasBeenBootstrapped) {
-            return;
+        if (!$this->hasBeenBootstrapped) {
+            $this->hasBeenBootstrapped = true;
         }
-
-        $this->hasBeenBootstrapped = true;
     }
 
     /**
-     * Boots the application.
-     *
-     * Sets the `booted` flag to true if not already set.
-     *
-     * @return void
+     * Boots the application services.
      */
-    public function boot(): void
+    public function bootServices(): void
     {
-        if ($this->booted) {
-            return;
+        if (!$this->booted) {
+            $this->booted = true;
         }
-
-        $this->booted = true;
     }
 
     /**
-     * Resolve the given type from the container.
+     * Resolves a service from the container.
      *
-     * @param  string  $abstract
-     * @param  array  $parameters
+     * @param string $abstract
+     * @param array $parameters
      * @return mixed
      */
     public function make($abstract, array $parameters = [])
@@ -325,8 +356,6 @@ class Application extends Container
      *
      * Resolves the request using the router and sends the response.
      * Handles any HTTP exceptions that may occur during the process.
-     *
-     * @return void
      */
     public function dispatch(): void
     {

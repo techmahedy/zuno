@@ -3,15 +3,13 @@
 namespace Zuno\Providers;
 
 use Zuno\Support\Router;
+use Dotenv\Dotenv;
 
 /**
- * RouteServiceProvider is responsible for registering and bootstrapping
- * the application's routing functionality.
- *
- * This class binds the Router instance into the service container and
- * loads the application's route definitions.
+ * EnvServiceProvider is responsible for registering and bootstrapping
+ * the application's configuration functionality.
  */
-class RouteServiceProvider extends ServiceProvider
+class EnvServiceProvider extends ServiceProvider
 {
     /**
      * Register any application services.
@@ -24,11 +22,8 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        // Bind the 'route' key in the container to a singleton instance of Router.
-        // This ensures that the same Router instance is returned whenever 'route' is resolved.
-        $this->app->singleton('route', function () {
-            return new Router();
-        });
+        $dotenv = Dotenv::createImmutable($this->app->basePath());
+        $dotenv->load();
     }
 
     /**
@@ -41,8 +36,6 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        // Load the web routes file.
-        // This file typically contains route definitions for the application.
-        require base_path('routes/web.php');
+        //
     }
 }

@@ -123,7 +123,7 @@ class Request
     public function getPath(): string
     {
         return urldecode(
-            parse_url($this->server['REQUEST_URI'], PHP_URL_PATH)
+            parse_url(($this->server['REQUEST_URI'] ?? '/'), PHP_URL_PATH)
         );
     }
 
@@ -134,7 +134,7 @@ class Request
      */
     public function getMethod(): string
     {
-        return strtolower($this->server['REQUEST_METHOD']);
+        return strtolower($this->server['REQUEST_METHOD'] ?? 'CLI');
     }
 
     /**
