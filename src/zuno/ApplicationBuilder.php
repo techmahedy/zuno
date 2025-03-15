@@ -22,10 +22,7 @@ class ApplicationBuilder
      * @param Application $app The application instance.
      * @param string $basePath The base path of the application.
      */
-    public function __construct(protected Application $app)
-    {
-        $this->instantiateSingletonClass();
-    }
+    public function __construct(protected Application $app) {}
 
     /**
      * Handle global middleware and kernel.
@@ -86,18 +83,6 @@ class ApplicationBuilder
         $capsule->bootEloquent();
 
         return $this;
-    }
-
-    /**
-     * Instantiate singleton classes required for the application.
-     *
-     * @return void
-     */
-    public function instantiateSingletonClass(): void
-    {
-        $this->app->singleton(Request::class, fn() => new Request());
-        $this->app->singleton(Response::class, fn() => new Response());
-        $this->app->singleton(Router::class, fn() => new Router());
     }
 
     /**

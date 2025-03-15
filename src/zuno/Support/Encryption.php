@@ -31,7 +31,8 @@ class Encryption
             throw new RuntimeException('Encryption failed');
         }
 
-        // Combine the encrypted data and IV, then base64-encode the result for safe storage/transmission
+        // Combine the encrypted data and IV, 
+        // Then base64-encode the result for safe storage/transmission
         return base64_encode($encryptedData . '::' . $iv);
     }
 

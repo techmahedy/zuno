@@ -2,6 +2,9 @@
 
 namespace Zuno\Providers;
 
+use Zuno\Support\UrlGenerator;
+use Zuno\Support\Storage\StorageFileService;
+use Zuno\Support\Session;
 use Zuno\Support\Mail\MailService;
 use Zuno\Support\Encryption;
 use Zuno\Http\Support\RequestAbortion;
@@ -10,8 +13,6 @@ use Zuno\Http\RedirectResponse;
 use Zuno\Config\Config;
 use Zuno\Auth\Security\PasswordHashing;
 use Zuno\Auth\Security\Authenticate;
-use Zuno\Support\Session;
-use Zuno\Support\UrlGenerator;
 
 /**
  * FacadeServiceProvider is responsible for binding key application services
@@ -94,6 +95,12 @@ class FacadeServiceProvider extends ServiceProvider
         // or configuration.
         $this->app->singleton('url', function () {
             return new UrlGenerator(env('APP_URL') ?? config('app.url'));
+        });
+
+        // Bind the 'storage' service to a singleton instance of the Storage class.
+        // This handles file uploads.
+        $this->app->singleton('storage', function () {
+            return new StorageFileService();
         });
     }
 

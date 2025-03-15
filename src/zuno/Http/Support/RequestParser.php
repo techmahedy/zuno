@@ -11,10 +11,28 @@ trait RequestParser
      */
     public function ip(): ?string
     {
-        return $_SERVER['HTTP_CLIENT_IP']
-            ?? $_SERVER['HTTP_X_FORWARDED_FOR']
-            ?? $_SERVER['REMOTE_ADDR']
-            ?? null;
+        if ($this->trustedHeaderSet & self::HEADER_FORWARDED) {
+            $forwarded = $this->headers->get('FORWARDED');
+            if ($forwarded) {
+                $parts = explode(';', $forwarded);
+                foreach ($parts as $part) {
+                    $keyValue = explode('=', trim($part), 2);
+                    if (count($keyValue) === 2 && $keyValue[0] === 'for') {
+                        return $keyValue[1];
+                    }
+                }
+            }
+        }
+
+        if ($this->trustedHeaderSet & self::HEADER_X_FORWARDED_FOR) {
+            $xForwardedFor = $this->headers->get('X_FORWARDED_FOR');
+            if ($xForwardedFor) {
+                $ips = explode(',', $xForwardedFor);
+                return trim($ips[0]);
+            }
+        }
+
+        return $this->server->get('REMOTE_ADDR');
     }
 
     /**
@@ -24,17 +42,17 @@ trait RequestParser
      */
     public function uri(): string
     {
-        return $_SERVER['REQUEST_URI'];
+        return $this->server->get('REQUEST_URI', '/');
     }
 
     /**
-     * Retrieves server
+     * Retrieves the server data.
      *
-     * @return array
+     * @return array The server data.
      */
     public function server(): array
     {
-        return $_SERVER;
+        return $this->server->all();
     }
 
     /**
@@ -44,14 +62,7 @@ trait RequestParser
      */
     public function headers(): array
     {
-        $headers = [];
-        foreach ($_SERVER as $key => $value) {
-            if (str_starts_with($key, 'HTTP_')) {
-                $header = str_replace(' ', '-', ucwords(str_replace('_', ' ', strtolower(substr($key, 5)))));
-                $headers[$header] = $value;
-            }
-        }
-        return $headers;
+        return $this->headers->all();
     }
 
     /**
@@ -62,8 +73,7 @@ trait RequestParser
      */
     public function header(string $name): ?string
     {
-        $headers = $this->headers();
-        return $headers[$name] ?? null;
+        return $this->headers->get($name);
     }
 
     /**
@@ -73,7 +83,7 @@ trait RequestParser
      */
     public function scheme(): string
     {
-        return isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+        return $this->server->get('HTTPS') === 'on' ? 'https' : 'http';
     }
 
     /**
@@ -83,7 +93,7 @@ trait RequestParser
      */
     public function host(): string
     {
-        return $_SERVER['HTTP_HOST'];
+        return $this->headers->get('HOST');
     }
 
     /**
@@ -93,7 +103,7 @@ trait RequestParser
      */
     public function url(): string
     {
-        return $this->scheme() . '://' . $this->host() . $this->URI();
+        return $this->scheme() . '://' . $this->host() . $this->uri();
     }
 
     /**
@@ -103,7 +113,7 @@ trait RequestParser
      */
     public function query(): ?string
     {
-        return $_SERVER['QUERY_STRING'] ?? '';
+        return $this->server->get('QUERY_STRING');
     }
 
     /**
@@ -113,7 +123,7 @@ trait RequestParser
      */
     public function content()
     {
-        return file_get_contents('php://input');
+        return $this->getContent();
     }
 
     /**
@@ -123,17 +133,17 @@ trait RequestParser
      */
     public function method(): string
     {
-        return $this->server['REQUEST_METHOD'] ?? 'CLI';
+        return strtolower($this->server->get('REQUEST_METHOD', 'GET'));
     }
 
     /**
-     * Retrieves the request query string.
+     * Retrieves the request cookies.
      *
-     * @return null|array
+     * @return array|null The cookies.
      */
     public function cookie(): ?array
     {
-        return $_COOKIE;
+        return $this->cookies->all();
     }
 
     /**
@@ -143,7 +153,7 @@ trait RequestParser
      */
     public function userAgent(): ?string
     {
-        return $_SERVER['HTTP_USER_AGENT'] ?? null;
+        return $this->headers->get('USER_AGENT');
     }
 
     /**
@@ -153,7 +163,7 @@ trait RequestParser
      */
     public function referer(): ?string
     {
-        return $_SERVER['HTTP_REFERER'] ?? null;
+        return $this->headers->get('REFERER');
     }
 
     /**
@@ -173,8 +183,7 @@ trait RequestParser
      */
     public function isAjax(): bool
     {
-        return isset($_SERVER['HTTP_X_REQUESTED_WITH'])
-            && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        return $this->headers->get('X_REQUESTED_WITH') === 'XMLHttpRequest';
     }
 
     /**
@@ -184,8 +193,8 @@ trait RequestParser
      */
     public function isJson(): bool
     {
-        return isset($_SERVER['HTTP_ACCEPT'])
-            && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false;
+        $accept = $this->headers->get('ACCEPT');
+        return $accept && strpos($accept, 'application/json') !== false;
     }
 
     /**
@@ -195,7 +204,7 @@ trait RequestParser
      */
     public function contentType(): ?string
     {
-        return $_SERVER['CONTENT_TYPE'] ?? null;
+        return $this->headers->get('CONTENT_TYPE');
     }
 
     /**
@@ -205,6 +214,7 @@ trait RequestParser
      */
     public function contentLength(): ?int
     {
-        return isset($_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : null;
+        $length = $this->headers->get('CONTENT_LENGTH');
+        return $length !== null ? (int)$length : null;
     }
 }

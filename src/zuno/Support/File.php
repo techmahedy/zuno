@@ -2,6 +2,9 @@
 
 namespace Zuno\Support;
 
+use Zuno\Support\Storage\PublicFileSystem;
+use Zuno\Support\Facades\Storage;
+
 class File
 {
     protected array $file;
@@ -197,5 +200,48 @@ class File
     public function isValid(): bool
     {
         return $this->getError() === UPLOAD_ERR_OK;
+    }
+
+    /**
+     * Store image in public or private file system
+     *
+     * @param string $path
+     * @param string $options
+     * @return boolean
+     */
+    public function store(string $path, string $options = ''): bool
+    {
+        if (is_null($options) || empty($options)) {
+            $options = 'public';
+        }
+
+        $relativePath = Storage::getDiskPath($options);
+
+        return app(PublicFileSystem::class, [$relativePath])->store($path, $this);
+    }
+
+    /**
+     * StoreAs function store the file with filename
+     *
+     * @param callable $callback
+     * @param string $path
+     * @param string $fileName
+     * @return boolean
+     */
+    public function storeAs(callable $callback, string $path, string $fileName = ''): bool
+    {
+        if (! is_callable($callback)) {
+            return false;
+        }
+
+        $shouldStore = $callback($this);
+
+        if (! $shouldStore) {
+            return false;
+        }
+
+        $relativePath = Storage::getDiskPath('public');
+
+        return app(PublicFileSystem::class, [$relativePath, $fileName])->store($path, $this);
     }
 }

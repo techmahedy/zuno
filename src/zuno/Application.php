@@ -2,14 +2,15 @@
 
 namespace Zuno;
 
-use Zuno\Config\Config;
 use Zuno\Support\Router;
 use Zuno\Providers\ServiceProvider;
+use Zuno\Providers\CoreProviders;
 use Zuno\Http\Response;
+use Zuno\Http\Request;
 use Zuno\Http\Exceptions\HttpException;
 use Zuno\Error\ErrorHandler;
 use Zuno\DI\Container;
-use Zuno\Providers\CoreProviders;
+use Zuno\Config\Config;
 
 class Application extends Container
 {
@@ -48,6 +49,7 @@ class Application extends Container
     public function __construct()
     {
         parent::setInstance($this);
+        $this->bindSingletonClasses();
         Config::initialize();
         $this->registerCoreProviders();
         $this->bootCoreProviders();
@@ -79,7 +81,7 @@ class Application extends Container
      */
     public function withExceptionHandler(): self
     {
-        ErrorHandler::handle(); // Set up global exception handling
+        ErrorHandler::handle();
         return $this;
     }
 
@@ -352,15 +354,26 @@ class Application extends Container
     }
 
     /**
+     * Bind all the application core singleton classes
+     * @return void
+     */
+    public function bindSingletonClasses(): void
+    {
+        $this->singleton(Request::class, Request::class);
+        $this->singleton(Router::class, Router::class);
+        $this->singleton(Response::class, Response::class);
+    }
+
+    /**
      * Dispatches the application request.
      *
      * Resolves the request using the router and sends the response.
      * Handles any HTTP exceptions that may occur during the process.
      */
-    public function dispatch(): void
+    public function dispatch($request): void
     {
         try {
-            $response = app(Router::class)->resolve($this, request());
+            $response = app(Router::class)->resolve($this, $request);
 
             if ($response instanceof \Zuno\Http\Response) {
                 $response->send();

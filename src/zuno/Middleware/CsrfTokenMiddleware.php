@@ -29,7 +29,7 @@ class CsrfTokenMiddleware implements Middleware
 
         if (
             $request->isPost() &&
-            ($request->session()->token() !== $request->_token)
+            (!hash_equals($request->session()->token(), $request->_token))
         ) {
             throw new HttpException(422, "Unauthorized, CSRF Token mismatched");
         }

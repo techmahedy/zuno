@@ -2,7 +2,6 @@
 
 namespace Zuno\Support;
 
-use Zuno\Middleware\Middleware;
 use Zuno\Http\Response;
 use Zuno\Http\Request;
 use App\Http\Kernel;
@@ -38,9 +37,20 @@ class Router extends Kernel
     protected ?string $currentRoutePath = null;
 
     /**
+     * @var string
+     */
+    protected string $currentRequestMethod;
+
+    /**
      * @var array<string> The middleware keys for the current route.
      */
-    protected static array $routeMiddlewares = [];
+    protected static array $routeMiddlewares = [
+        'GET' => [],
+        'POST' => [],
+        'PUT' => [],
+        'PATCH' => [],
+        'DELETE' => [],
+    ];
 
     /**
      * Registers a GET route with a callback.
@@ -51,7 +61,20 @@ class Router extends Kernel
      */
     public function get($path, $callback): self
     {
-        self::$routes['get'][$path] = $callback;
+        if (
+            request()->_method === 'PUT' ||
+            request()->_method === 'PATCH' ||
+            request()->_method === 'DELETE'
+        ) {
+            $this->currentRequestMethod = request()->_method;
+            self::$routes[request()->_method][$path] = $callback;
+            $this->currentRoutePath = $path;
+
+            return $this;
+        }
+
+        $this->currentRequestMethod = 'GET';
+        self::$routes['GET'][$path] = $callback;
         $this->currentRoutePath = $path;
 
         return $this;
@@ -66,7 +89,56 @@ class Router extends Kernel
      */
     public function post($path, $callback): self
     {
-        self::$routes['post'][$path] = $callback;
+        $this->currentRequestMethod = 'POST';
+        self::$routes['POST'][$path] = $callback;
+        $this->currentRoutePath = $path;
+
+        return $this;
+    }
+
+    /**
+     * Registers a PUT route with a callback.
+     *
+     * @param string $path The route path.
+     * @param callable $callback The callback for the route.
+     * @return self
+     */
+    public function put($path, $callback): self
+    {
+        $this->currentRequestMethod = 'PUT';
+        self::$routes['PUT'][$path] = $callback;
+        $this->currentRoutePath = $path;
+
+        return $this;
+    }
+
+    /**
+     * Registers a PATCH route with a callback.
+     *
+     * @param string $path The route path.
+     * @param callable $callback The callback for the route.
+     * @return self
+     */
+    public function patch($path, $callback): self
+    {
+        $this->currentRequestMethod = 'PATCH';
+        self::$routes['PATCH'][$path] = $callback;
+        $this->currentRoutePath = $path;
+
+        return $this;
+    }
+
+    /**
+     * Registers a DELETE route with a callback.
+     *
+     * @param string $path The route path.
+     * @param callable $callback The callback for the route.
+     * @return self
+     */
+    public function delete($path, $callback): self
+    {
+        $this->currentRequestMethod = 'DELETE';
+        self::$routes['DELETE'][$path] = $callback;
         $this->currentRoutePath = $path;
 
         return $this;
@@ -130,12 +202,18 @@ class Router extends Kernel
     public function middleware(string|array $keys): self
     {
         if ($this->currentRoutePath) {
+            $method = $this->getCurrentRequestMethod();
             foreach ((array) $keys as $key) {
-                self::$routeMiddlewares[$this->currentRoutePath] = (array) $keys;
+                self::$routeMiddlewares[$method][$this->currentRoutePath] = (array) $keys;
             }
         }
 
         return $this;
+    }
+
+    protected function getCurrentRequestMethod(): string
+    {
+        return $this->currentRequestMethod ?? 'GET';
     }
 
     /**
@@ -148,6 +226,7 @@ class Router extends Kernel
         $method = $request->getMethod();
         $url = $request->getPath();
         $routes = self::$routes[$method] ?? [];
+
         $routeParams = false;
 
         // Start iterating registed routes
@@ -191,11 +270,13 @@ class Router extends Kernel
     {
         $url = $request->getPath();
         $method = $request->getMethod();
+
         $routes = self::$routes[$method] ?? [];
+
         foreach ($routes as $route => $callback) {
             $routeRegex = "@^" . preg_replace('/\{(\w+)(:[^}]+)?}/', '([^/]+)', $route) . "$@";
             if (preg_match($routeRegex, $url)) {
-                return self::$routeMiddlewares[$route] ?? null;
+                return self::$routeMiddlewares[$method][$route] ?? null;
             }
         }
 
@@ -212,7 +293,7 @@ class Router extends Kernel
             [$name, $params] = array_pad(explode(':', $key, 2), 2, null);
             $params = $params ? explode(',', $params) : [];
             if (!isset($this->routeMiddleware[$name])) {
-                throw new \Exception("Middleware [$name] is not defined");
+                throw new \Exception("[$name] Middleware not defined");
             }
 
             $middlewareClass = $this->routeMiddleware[$name];

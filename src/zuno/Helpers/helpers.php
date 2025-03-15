@@ -234,7 +234,7 @@ function base_url(string $path = ''): string
  */
 function storage_path(string $path = ''): string
 {
-    return app()->storagePath($path);
+    return app()->storagePath() . '/' . $path;
 }
 
 /**
@@ -245,7 +245,7 @@ function storage_path(string $path = ''): string
  */
 function public_path(string $path = ''): string
 {
-    return app()->publicPath($path);
+    return app()->publicPath($path) . '/' . $path;;
 }
 
 /**
@@ -256,7 +256,7 @@ function public_path(string $path = ''): string
  */
 function resource_path(string $path = ''): string
 {
-    return app()->resourcesPath($path);
+    return app()->resourcesPath($path) . '/' . $path;;
 }
 
 /**

@@ -73,8 +73,9 @@ class ConfigSession
 
         // Regenerate after lifetime expires.
         if (isset($_SESSION['last_regenerated']) && (time() - $_SESSION['last_regenerated']) > ($sessionLifetime * 60)) {
+            $oldToken = $_SESSION['_token'] ?? bin2hex(openssl_random_pseudo_bytes(16));
             self::regenerateSession();
-            $_SESSION['_token'] = bin2hex(openssl_random_pseudo_bytes(16));
+            $_SESSION['_token'] = $oldToken;
             $_SESSION['last_regenerated'] = time();
         } else if (!isset($_SESSION['last_regenerated'])) {
             $_SESSION['_token'] = bin2hex(openssl_random_pseudo_bytes(16));
@@ -102,7 +103,14 @@ class ConfigSession
         ini_set('session.cookie_lifetime', $sessionConfig['expire_on_close'] ? 0 : $sessionConfig['lifetime'] * 60);
 
         // Custom session handlers for cookie-based storage
-        session_set_save_handler([self::class, 'cookieOpen'], [self::class, 'cookieClose'], [self::class, 'cookieRead'], [self::class, 'cookieWrite'], [self::class, 'cookieDestroy'], [self::class, 'cookieGc']);
+        session_set_save_handler(
+            [self::class, 'cookieOpen'],
+            [self::class, 'cookieClose'],
+            [self::class, 'cookieRead'],
+            [self::class, 'cookieWrite'],
+            [self::class, 'cookieDestroy'],
+            [self::class, 'cookieGc']
+        );
     }
 
     public static function cookieOpen($savePath, $sessionName): bool
