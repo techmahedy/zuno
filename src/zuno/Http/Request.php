@@ -392,6 +392,37 @@ class Request
     }
 
     /**
+     * Checks if the request method is PUT.
+     *
+     * @return bool True if the method is PUT, false otherwise.
+     */
+    public function isPut(): bool
+    {
+        return $this->getMethod() === "PUT";
+    }
+    
+    /**
+     * Checks if the request method is PATCH.
+     *
+     * @return bool True if the method is PATCH, false otherwise.
+     */
+    public function isPatch(): bool
+    {
+        return $this->getMethod() === "PATCH";
+    }
+
+    /**
+     * Checks if the request method is DELETE.
+     *
+     * @return bool True if the method is DELETE, false otherwise.
+     */
+    public function isDelete(): bool
+    {
+        return $this->getMethod() === "DELETE";
+    }
+
+
+    /**
      * Sets route parameters for the request.
      *
      * @param array<string, mixed> $params The route parameters.

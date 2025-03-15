@@ -13,7 +13,7 @@ class CsrfTokenMiddleware implements Middleware
     /**
      * Handles an incoming request and verifies the CSRF token.
      *
-     * This middleware checks if the request is a POST request and if the 
+     * This middleware checks if the request is a POST request and if the
      * CSRF token is present. If the CSRF token is missing, an exception is thrown.
      *
      * @param Request $request The incoming request instance.
@@ -23,13 +23,22 @@ class CsrfTokenMiddleware implements Middleware
      */
     public function __invoke(Request $request, Closure $next): Response
     {
-        if ($request->isPost() && !$request->has('_token')) {
+        if (
+            ($request->isPost() ||
+                $request->isPut() ||
+                $request->isPatch() ||
+                $request->isDelete()) &&
+            !$request->has("_token")
+        ) {
             throw new HttpException(422, "CSRF Token not found");
         }
 
         if (
-            $request->isPost() &&
-            (!hash_equals($request->session()->token(), $request->_token))
+            ($request->isPost() ||
+                $request->isPut() ||
+                $request->isPatch() ||
+                $request->isDelete()) &&
+            !hash_equals($request->session()->token(), $request->_token)
         ) {
             throw new HttpException(422, "Unauthorized, CSRF Token mismatched");
         }
