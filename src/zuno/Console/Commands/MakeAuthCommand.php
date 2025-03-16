@@ -189,7 +189,7 @@ class LoginController extends Controller
             'password' => 'required|min:2|max:20'
         ]);
 
-        \$user = User::where('email', \$request->email)->first();
+        \$user = User::query()->where('email', '=', \$request->email)->first();
 
         if (\$user) {
             if (Auth::try(\$request->passed())) {
