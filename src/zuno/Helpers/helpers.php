@@ -16,6 +16,35 @@ use Zuno\DI\Container;
 use Zuno\Config\Config;
 
 /**
+ * Gets an environment variable from available sources, and provides emulation
+ * for unsupported or inconsistent environment variables (i.e., DOCUMENT_ROOT on
+ * IIS, or SCRIPT_NAME in CGI mode). Also exposes some additional custom
+ * environment information.
+ *
+ * @param string $key Environment variable name.
+ * @param string|float|int|bool|null $default Specify a default value in case the environment variable is not defined.
+ * @return string|float|int|bool|null Environment variable setting.
+ */
+function env(string $key, string|float|int|bool|null $default = null): string|float|int|bool|null
+{
+    return zunoEnv($key, $default);
+}
+
+/**
+ * Retrieves an environment variable or returns a default value if the variable is not set.
+ *
+ * @param string $key Environment variable name.
+ * @param string|float|int|bool|null $default Default value to return if the variable is not set.
+ * @return string|float|int|bool|null Environment variable value or default.
+ */
+function zunoEnv(string $key, string|float|int|bool|null $default = null): string|float|int|bool|null
+{
+    $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+
+    return $value !== false ? $value : $default;
+}
+
+/**
  * Get the available container instance
  *
  * @param string|class-string|null $abstract
