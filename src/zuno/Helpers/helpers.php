@@ -1,5 +1,6 @@
 <?php
 
+use Zuno\Utilities\Paginator;
 use Zuno\Support\Session;
 use Zuno\Support\Facades\Hash;
 use Zuno\Support\Facades\Auth;
@@ -179,6 +180,16 @@ function config(string $key, ?string $default = null): null|string|array
 function isAuthenticated(): bool
 {
     return Auth::check();
+}
+
+/**
+ * Get the paginator instance
+ *
+ * @return Paginator
+ */
+function paginator($data): Paginator
+{
+    return new Paginator($data);
 }
 
 /**

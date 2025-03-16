@@ -151,7 +151,12 @@ class Response implements HttpStatus
             exit;
         }
 
-        echo $this->body;
+        if (is_array($this->body) || is_object($this->body)) {
+            header('Content-Type: application/json');
+            echo json_encode($this->body);
+        } else {
+            echo $this->body;
+        }
     }
 
     /**
@@ -166,7 +171,16 @@ class Response implements HttpStatus
      */
     public function json(mixed $data, int $statusCode = 200, array $headers = []): Response
     {
-        $this->body = json_encode($data);
+        $encoded = json_encode($data);
+
+        if ($encoded === false) {
+            $this->body = json_encode(['error' => 'JSON encoding failed: ' . json_last_error_msg()]);
+            $this->statusCode = 500;
+            $this->headers['Content-Type'] = 'application/json';
+            return $this;
+        }
+
+        $this->body = $encoded;
         $this->statusCode = $statusCode;
 
         $this->headers['Content-Type'] = 'application/json';

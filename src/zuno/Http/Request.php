@@ -77,8 +77,8 @@ class Request
     public InputBag $cookies;
     public ServerBag $server;
     public HeaderBag $headers;
-    public array $files;
     public Session $session;
+    public array $files;
     protected $content;
     protected static bool $httpMethodParameterOverride = false;
     protected ?string $requestUri = null;
@@ -102,7 +102,7 @@ class Request
         $this->requestUri = $this->getPath();
         $this->baseUrl = base_url();
         $this->method = $this->method();
-        $this->session = app(Session::class);
+        $this->session = new Session($_SESSION);
     }
 
     /**
@@ -347,27 +347,24 @@ class Request
     public function getMethod(): string
     {
         $this->method = strtoupper($this->server->get("REQUEST_METHOD", "GET"));
-    
+
         if ($this->headers->has("X-HTTP-METHOD-OVERRIDE")) {
             $method = strtoupper($this->headers->get("X-HTTP-METHOD-OVERRIDE"));
             $this->headers->set("X-HTTP-METHOD-OVERRIDE", $method);
             self::$httpMethodParameterOverride = true;
-        }
-        elseif ($this->request->has("_method")) {
+        } elseif ($this->request->has("_method")) {
             $method = strtoupper($this->request->get("_method"));
             $this->headers->set("X-HTTP-METHOD-OVERRIDE", $method);
             self::$httpMethodParameterOverride = true;
         } else {
             $method = $this->method;
         }
-    
-        // Validate if the overridden method is a valid HTTP method.
+
         if (in_array($method, self::VALID_HTTP_METHODS, true)) {
             $this->method = $method;
             return $this->method;
         }
-    
-        // If it's an invalid method, throw a specific exception.
+
         throw new \InvalidArgumentException("Invalid HTTP method override: $method.");
     }
 
@@ -400,7 +397,7 @@ class Request
     {
         return $this->getMethod() === "PUT";
     }
-    
+
     /**
      * Checks if the request method is PATCH.
      *

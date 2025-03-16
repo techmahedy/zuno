@@ -31,7 +31,6 @@ class ErrorHandler
 
                 $formattedCode = implode("\n", $highlightedLines);
 
-                // Detect file extension for syntax highlighting
                 $fileExtension = pathinfo($errorFile, PATHINFO_EXTENSION);
                 $languageClass = "language-$fileExtension";
 

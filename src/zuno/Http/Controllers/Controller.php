@@ -100,7 +100,7 @@ class Controller extends View
 
         if (!is_file($cache) || filemtime($actual) > filemtime($cache)) {
             if (!is_file($actual)) {
-                throw new RuntimeException('View file not found: ' . $actual);
+                throw new RuntimeException('View not found: ' . $actual);
             }
 
             $content = file_get_contents($actual);

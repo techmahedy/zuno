@@ -12,6 +12,36 @@ class Session
     protected $data = [];
 
     /**
+     * Flash data key.
+     *
+     * @var string
+     */
+    protected $flashKey = '_flash';
+
+    /**
+     * Constructor.
+     *
+     * @param array|null $data
+     */
+    public function __construct(?array &$data = [])
+    {
+        $this->startSession();
+        $this->data = &$_SESSION;
+    }
+
+    /**
+     * Start the session if it hasn't already been started.
+     *
+     * @return void
+     */
+    protected function startSession(): void
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+    }
+
+    /**
      * Get a session value by key.
      *
      * @param string $key
@@ -33,7 +63,6 @@ class Session
     public function put(string $key, $value): void
     {
         $this->data[$key] = $value;
-        $_SESSION[$key] = $value;
     }
 
     /**
@@ -56,8 +85,6 @@ class Session
     public function forget(string $key): void
     {
         unset($this->data[$key]);
-
-        unset($_SESSION[$key]);
     }
 
     /**
@@ -68,18 +95,17 @@ class Session
     public function flush(): void
     {
         $this->data = [];
-
-        $_SESSION = [];
     }
 
     /**
      * Regenerate the session ID.
      *
+     * @param bool $deleteOldSession
      * @return void
      */
-    public function regenerate(): void
+    public function regenerate(bool $deleteOldSession = true): void
     {
-        session_regenerate_id(true);
+        session_regenerate_id($deleteOldSession);
     }
 
     /**
@@ -89,7 +115,7 @@ class Session
      */
     public function all(): array
     {
-        return $_SESSION;
+        return $this->data;
     }
 
     /**
@@ -121,12 +147,61 @@ class Session
     public function destroy(): void
     {
         session_destroy();
-
         $this->data = [];
     }
 
+    /**
+     * Get the CSRF token.
+     *
+     * @return string|null
+     */
     public function token(): ?string
     {
-        return $_SESSION['_token'];
+        return $this->get('_token');
+    }
+
+    /**
+     * Set a flash message.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return void
+     */
+    public function flash(string $key, $value): void
+    {
+        $this->put($this->flashKey . '.' . $key, $value);
+    }
+
+    /**
+     * Get a flash message.
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function getFlash(string $key, $default = null)
+    {
+        $value = $this->get($this->flashKey . '.' . $key, $default);
+        $this->forget($this->flashKey . '.' . $key);
+        return $value;
+    }
+
+    /**
+     * Keep flash data for the next request.
+     *
+     * @param string|array $keys
+     * @return void
+     */
+    public function reflash($keys): void
+    {
+        if (is_string($keys)) {
+            $keys = [$keys];
+        }
+
+        foreach ($keys as $key) {
+            if ($this->has($this->flashKey . '.' . $key)) {
+                $this->flash($key, $this->get($this->flashKey . '.' . $key));
+            }
+        }
     }
 }

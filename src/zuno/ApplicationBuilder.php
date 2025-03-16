@@ -2,14 +2,10 @@
 
 namespace Zuno;
 
-use Zuno\Support\Router;
-use Zuno\Middleware\Contracts\Middleware as ContractsMiddleware;
 use Zuno\Http\Response;
 use Zuno\Http\Request;
-use Illuminate\Events\Dispatcher;
-use Illuminate\Database\Capsule\Manager as Capsule;
-use Illuminate\Container\Container;
 use App\Http\Kernel;
+use Zuno\Middleware\Contracts\Middleware as ContractsMiddleware;
 
 class ApplicationBuilder
 {
@@ -30,7 +26,7 @@ class ApplicationBuilder
      * @return self
      * @throws \Exception If a middleware dependency is unresolved.
      */
-    public function withKernels(): self
+    public function withMiddlewareStack(): self
     {
         $kernel = app(Kernel::class);
 
@@ -55,32 +51,6 @@ class ApplicationBuilder
 
         $response = $kernel->handle($request, $finalHandler);
         $response->send();
-
-        return $this;
-    }
-
-    /**
-     * Configure Eloquent ORM services.
-     *
-     * @return self
-     */
-    public function withEloquentServices(): self
-    {
-        $capsule = new Capsule;
-
-        $capsule->addConnection([
-            'driver'    => env('DB_CONNECTION'),
-            'host'      => env('DB_HOST'),
-            'database'  => env('DB_DATABASE'),
-            'username'  => env('DB_USERNAME'),
-            'password'  => env('DB_PASSWORD'),
-            'charset'   => 'utf8',
-            'collation' => 'utf8_unicode_ci',
-            'prefix'    => '',
-        ]);
-
-        $capsule->setEventDispatcher(new Dispatcher(new Container));
-        $capsule->bootEloquent();
 
         return $this;
     }

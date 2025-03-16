@@ -32,32 +32,25 @@ class Log implements ResettableInterface
      */
     public function logReader(): Logger
     {
-        // Instantiate the logger with a specific channel name
-        $channel = env('LOG_CHANNEL', 'daily');
+        $channel = env('LOG_CHANNEL', 'stack');
         $this->logger = new Logger($channel);
 
-        // Define the log file path
         $path = base_path() . '/storage/logs';
 
-        // Ensure the log directory exists; create it if it doesn't
         if (!is_dir($path)) {
             mkdir($path, 0775, true);
         }
 
-        // Define log file path based on the channel
         $logFile = $channel !== 'daily'
             ? $path . '/zuno.log'
             : $path . '/' . date('Y_m_d') . '_zuno.log';
 
-        // Ensure the log file exists (create it if it doesn't)
         if (!is_file($logFile)) {
             touch($logFile);
         }
 
-        // Add a handler to write logs to the file with DEBUG level
         $this->logger->pushHandler(new StreamHandler($logFile, Level::Debug));
 
-        // Return the configured logger instance
         return $this->logger;
     }
 
@@ -71,7 +64,6 @@ class Log implements ResettableInterface
      */
     public function reset(): void
     {
-        // Reset the logger by clearing all handlers
         $this->logger->reset();
     }
 }
