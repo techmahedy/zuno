@@ -70,8 +70,7 @@ class Application extends Container
         self::setInstance($app);
 
         return (new \Zuno\ApplicationBuilder($app))
-            ->withKernels()
-            ->withEloquentServices();
+            ->withMiddlewareStack();
     }
 
     /**
@@ -82,6 +81,7 @@ class Application extends Container
     public function withExceptionHandler(): self
     {
         ErrorHandler::handle();
+
         return $this;
     }
 

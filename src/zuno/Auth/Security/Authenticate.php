@@ -22,7 +22,10 @@ class Authenticate
             throw new \Exception("Email or Password not found", 1);
         }
 
-        $user = User::where('email', $email)->orWhere('username', $email)->first();
+        $user = User::query()
+            ->where('email', '=', $email)
+            ->orWhere('username', '=', $email)
+            ->first();
 
         if ($user && Hash::check($password, $user->password)) {
             self::setUser($user);

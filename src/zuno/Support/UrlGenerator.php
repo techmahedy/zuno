@@ -46,10 +46,8 @@ class UrlGenerator
      */
     public function enqueue($path = '/', $secure = null)
     {
-        // Use the provided secure flag or fall back to the default secure flag.
         $secure = $secure ?? $this->secure;
 
-        // Determine the scheme (HTTP or HTTPS) based on the secure flag.
         $scheme = $secure ? 'https://' : 'http://';
 
         // If the base URL already starts with "http://" or "https://", remove the scheme
@@ -61,5 +59,33 @@ class UrlGenerator
         // Construct the full URL by combining the scheme, base URL, and path.
         // The path is trimmed of leading slashes to ensure proper formatting.
         return $scheme . $this->baseUrl . '/' . ltrim($path, '/');
+    }
+
+    /**
+     * Generate a full URL without query parameters.
+     *
+     * @param string $url The URL to process.
+     * @return string The URL without query parameters.
+     */
+    public function full()
+    {
+        return base_url() . request()->uri();
+    }
+
+    /**
+     * Get the current URL without query parameters.
+     *
+     * This method returns the current URL, excluding any query parameters.
+     * It uses the `full()` method and removes the query string if present.
+     *
+     * @return string The current URL without query parameters.
+     */
+    public function current()
+    {
+        // Get the full URL (including query parameters).
+        $fullUrl = $this->full();
+
+        // Remove the query string from the URL.
+        return strtok($fullUrl, '?');
     }
 }

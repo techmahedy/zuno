@@ -2,11 +2,12 @@
 
 namespace Zuno\Support;
 
+use Zuno\Middleware\Contracts\Middleware as ContractsMiddleware;
 use Zuno\Http\Response;
 use Zuno\Http\Request;
-use App\Http\Kernel;
 use Zuno\DI\Container;
-use Zuno\Middleware\Contracts\Middleware as ContractsMiddleware;
+use Ramsey\Collection\Collection;
+use App\Http\Kernel;
 
 class Router extends Kernel
 {
@@ -365,9 +366,14 @@ class Router extends Kernel
             } else {
                 $result = call_user_func($callback, ...array_values($routeParams));
             }
+
             if (!($result instanceof \Zuno\Http\Response)) {
+                if ($result instanceof Collection) {
+                    $result = $result->toArray();
+                }
                 return new \Zuno\Http\Response($result);
             }
+
             return $result;
         };
 
