@@ -307,3 +307,29 @@ function abort_if(bool $condition, int $code, string $message = ''): void
 {
     Abort::abortIf($condition, $code, $message);
 }
+
+
+
+/**
+ * Mask a string with a specified number of visible characters at the start and end.
+ * 
+ * @param string $string The string to mask
+ * @param int $visibleFromStart Number of visible characters from the start of the string
+ * @param int $visibleFromEnd Number of visible characters from the end of the string
+ * @param string $maskCharacter The character used to mask the string
+ * 
+ * @return string The masked string
+ */
+function maskString(string $string, int $visibleFromStart = 1, int $visibleFromEnd = 1, string $maskCharacter = '*'): string
+    {
+        $length = strlen($string);
+
+        $maskedLength = $length - $visibleFromEnd;
+
+        $startPart = substr($string, 0, $visibleFromStart);
+        $endPart = substr($string, -$visibleFromEnd);
+
+        return str_pad($startPart, $maskedLength, $maskCharacter, STR_PAD_RIGHT) . $endPart;
+    }
+
+    
