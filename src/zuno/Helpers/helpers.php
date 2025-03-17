@@ -431,3 +431,14 @@ function isPalindrome(string $string): bool
     $cleaned = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $string));
     return $cleaned === strrev($cleaned);
 }
+
+/**
+ * Count the number of words in a string.
+ *
+ * @param string $string The input string.
+ * @return int The word count.
+ */
+function wordCount(string $string): int
+{
+    return str_word_count($string);
+}
