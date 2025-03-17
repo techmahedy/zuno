@@ -344,3 +344,15 @@ function truncateString(string $string, int $maxLength, string $suffix = '...'):
 {
     return (strlen($string) > $maxLength) ? substr($string, 0, $maxLength) . $suffix : $string;
 }
+
+
+/**
+ * Convert a camelCase string to snake_case.
+ *
+ * @param string $input The camelCase string.
+ * @return string The converted snake_case string.
+ */
+function camelToSnake(string $input): string
+{
+    return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $input));
+}
