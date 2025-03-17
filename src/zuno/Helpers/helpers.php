@@ -361,15 +361,26 @@ function abort_if(bool $condition, int $code, string $message = ''): void
  * @return string The masked string
  */
 function maskString(string $string, int $visibleFromStart = 1, int $visibleFromEnd = 1, string $maskCharacter = '*'): string
-    {
-        $length = strlen($string);
+{
+    $length = strlen($string);
 
-        $maskedLength = $length - $visibleFromEnd;
+    $maskedLength = $length - $visibleFromEnd;
 
-        $startPart = substr($string, 0, $visibleFromStart);
-        $endPart = substr($string, -$visibleFromEnd);
+    $startPart = substr($string, 0, $visibleFromStart);
+    $endPart = substr($string, -$visibleFromEnd);
 
-        return str_pad($startPart, $maskedLength, $maskCharacter, STR_PAD_RIGHT) . $endPart;
-    }
+    return str_pad($startPart, $maskedLength, $maskCharacter, STR_PAD_RIGHT) . $endPart;
+}
 
-    
+/**
+ * Truncate a string to a specific length and append a suffix if truncated.
+ *
+ * @param string $string The input string.
+ * @param int $maxLength The maximum allowed length.
+ * @param string $suffix The suffix to append if truncated (default: '...').
+ * @return string The truncated string.
+ */
+function truncateString(string $string, int $maxLength, string $suffix = '...'): string
+{
+    return (strlen($string) > $maxLength) ? substr($string, 0, $maxLength) . $suffix : $string;
+}
