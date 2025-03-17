@@ -419,3 +419,15 @@ function randomString(int $length = 10): string
 {
     return substr(str_shuffle(str_repeat('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', $length)), 0, $length);
 }
+
+/**
+ * Check if a given string is a palindrome.
+ *
+ * @param string $string The input string.
+ * @return bool Returns true if the string is a palindrome, false otherwise.
+ */
+function isPalindrome(string $string): bool
+{
+    $cleaned = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $string));
+    return $cleaned === strrev($cleaned);
+}
