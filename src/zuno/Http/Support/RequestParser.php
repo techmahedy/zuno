@@ -183,7 +183,7 @@ trait RequestParser
      */
     public function isAjax(): bool
     {
-        return $this->headers->get('X_REQUESTED_WITH') === 'XMLHttpRequest';
+        return $this->headers->get('X-REQUESTED-WITH') === 'XMLHttpRequest';
     }
 
     /**

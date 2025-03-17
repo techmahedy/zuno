@@ -3,8 +3,9 @@
 namespace Zuno\Http;
 
 use Zuno\Session\Input;
-use Zuno\Http\Response;
 use Zuno\Http\Support\ValidationRules;
+use Zuno\Http\Response;
+use Zuno\Http\Exceptions\HttpResponseException;
 
 trait Rule
 {
@@ -21,32 +22,32 @@ trait Rule
     {
         $errors = [];
         $input = $this->all();
-
-        // Flash input requested data
         Input::flashInput();
 
         if (is_array($input)) {
             foreach ($rules as $fieldName => $value) {
                 $fieldRules = explode("|", $value);
-
                 foreach ($fieldRules as $rule) {
                     $ruleValue = $this->_getRuleSuffix($rule);
                     $rule = $this->_removeRuleSuffix($rule);
-
                     $errorMessage = $this->sanitizeUserRequest($input, $fieldName, $rule, $ruleValue);
-
                     if ($errorMessage) {
-                        $errors[$fieldName][$rule] = $errorMessage;
+                        $errors[$fieldName][] = $errorMessage;
                     }
                 }
             }
         }
 
         if (!empty($errors)) {
-            if (method_exists($this, 'setErrors')) {
-                $this->setErrors($errors);
+            if (request()->isAjax()) {
+                throw new HttpResponseException(
+                    response()->json(['errors' => $errors]),
+                    $errors,
+                    Response::HTTP_UNPROCESSABLE_ENTITY
+                );
             }
 
+            $this->setErrors($errors);
             foreach ($errors as $key => $error) {
                 flash()->set($key, implode(',', (array)$error));
             }
@@ -55,10 +56,7 @@ trait Rule
             exit;
         }
 
-        if (method_exists($this, 'setPassedData')) {
-            $this->setPassedData($input);
-        }
-
+        $this->setPassedData($input);
         return $input;
     }
 }

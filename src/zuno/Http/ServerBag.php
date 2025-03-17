@@ -34,6 +34,7 @@ class ServerBag
                 $headers[str_replace('_', '-', substr($key, 5))] = $value;
             }
         }
+
         return $headers;
     }
 }

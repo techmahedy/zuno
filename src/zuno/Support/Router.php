@@ -264,6 +264,17 @@ class Router extends Kernel
     }
 
     /**
+     * Checks if the request is a modifying request (POST, PUT, PATCH, DELETE).
+     *
+     * @param Request $request The incoming request instance.
+     * @return bool
+     */
+    protected function isModifyingRequest(Request $request): bool
+    {
+        return $request->isPost() || $request->isPut() || $request->isPatch() || $request->isDelete();
+    }
+
+    /**
      * Get the current route middleware
      * @return array|null
      */
@@ -271,7 +282,6 @@ class Router extends Kernel
     {
         $url = $request->getPath();
         $method = $request->getMethod();
-
         $routes = self::$routes[$method] ?? [];
 
         foreach ($routes as $route => $callback) {
@@ -329,10 +339,7 @@ class Router extends Kernel
             if (is_array($callback)) {
                 $result = $this->resolveControllerAction($callback, $container, $routeParams);
             } elseif (is_string($callback) && class_exists($callback)) {
-                // Handle invokable controller
                 $controller = $container->get($callback);
-
-                // Resolve the __invoke method parameters using the container
                 $reflectionMethod = new \ReflectionMethod($controller, '__invoke');
                 $parameters = $reflectionMethod->getParameters();
 
@@ -467,7 +474,7 @@ class Router extends Kernel
 
             if ($paramType && !$paramType->isBuiltin()) {
                 $resolvedClass = $paramType->getName();
-                if (is_subclass_of($resolvedClass, \Illuminate\Database\Eloquent\Model::class)) {
+                if (is_subclass_of($resolvedClass, \Zuno\Database\Eloquent\Model::class)) {
                     $modelId = $routeParams[$paramName] ?? null;
                     $dependencies[] = $modelId ? $resolvedClass::findOrFail($modelId) : $container->get($resolvedClass);
                 } else {

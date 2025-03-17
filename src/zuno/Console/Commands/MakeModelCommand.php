@@ -67,7 +67,7 @@ class MakeModelCommand extends Command
 
 namespace {$namespace};
 
-use Zuno\Model\Model;
+use Zuno\Database\Eloquent\Model;
 
 class {$className} extends Model
 {

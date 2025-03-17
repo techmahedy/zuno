@@ -202,6 +202,7 @@ class Response implements HttpStatus
         $this->body = $content;
         $this->statusCode = $statusCode;
         $this->headers = array_merge($this->headers, ['Content-Type' => 'text/plain'], $headers);
+
         return $this;
     }
 

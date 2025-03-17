@@ -496,11 +496,7 @@ trait BladeCondition
      */
     protected function compileCsrf()
     {
-        if (!isset($_SESSION['_token'])) {
-            \Zuno\Session\ConfigSession::configAppSession();
-        }
-
-        $token = $_SESSION['_token'];
+        $token = request()->session()->token();
 
         return '<input type="hidden" name="_token" value="' . htmlspecialchars($token, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     }

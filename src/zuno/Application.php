@@ -49,11 +49,11 @@ class Application extends Container
     public function __construct()
     {
         parent::setInstance($this);
+        $this->withExceptionHandler();
         $this->bindSingletonClasses();
         Config::initialize();
         $this->registerCoreProviders();
         $this->bootCoreProviders();
-        $this->withExceptionHandler();
         $this->setNecessaryFolderPath();
         $this->runningInConsole();
     }

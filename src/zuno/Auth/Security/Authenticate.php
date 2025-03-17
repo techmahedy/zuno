@@ -7,6 +7,18 @@ use App\Models\User;
 
 class Authenticate
 {
+    private $data = [];
+
+    public function __set($name, $value)
+    {
+        $this->data[$name] = $value;
+    }
+
+    public function __get($name)
+    {
+        return $this->data[$name] ?? null;
+    }
+
     /**
      * Attempt to log the user in with email and password.
      *
@@ -40,13 +52,19 @@ class Authenticate
      *
      * @return \Zuno\Models\User|null
      */
-    public function user()
+    public function user(): ?User
     {
         if (isset($_SESSION['user'])) {
-            return User::find($_SESSION['user']->id);
+            $user = User::find($_SESSION['user']->id);
+            $reflectionProperty = new \ReflectionProperty(User::class, 'unexposable');
+            $reflectionProperty->setAccessible(true);
+            if ($user) {
+                $user->makeHidden($reflectionProperty->getValue($user));
+                return $user;
+            }
         }
 
-        return  null;
+        return null;
     }
 
     /**

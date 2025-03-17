@@ -151,6 +151,18 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     }
 
     /**
+     * Get the data except unexposed attributes
+     * @param array $attributes
+     * @return self
+     */
+    public function makeHidden(array $attributes): self
+    {
+        $this->unexposable = array_merge($this->unexposable, $attributes);
+
+        return $this;
+    }
+
+    /**
      * Serializes the model to an array for JSON representation.
      *
      * @return array The array representation of the model.

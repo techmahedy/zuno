@@ -2,6 +2,8 @@
 
 namespace Zuno\Error;
 
+use Zuno\Http\Exceptions\HttpResponseException;
+
 class ErrorHandler
 {
     public static function handle(): void
@@ -10,9 +12,17 @@ class ErrorHandler
             $errorMessage = $exception->getMessage();
             $errorFile = $exception->getFile();
             $errorLine = $exception->getLine();
-            $errorTrace = nl2br(htmlspecialchars($exception->getTraceAsString()));
+            $errorTrace = $exception->getTraceAsString();
 
-            if (env('APP_DEBUG') === true) {
+            if ($exception instanceof HttpResponseException) {
+                $validationErrors = $exception->getValidationErrors();
+                $statusCode = $exception->getStatusCode();
+
+                self::sendJsonErrorResponse($errorMessage, $errorFile, $errorLine, $errorTrace, $statusCode, $validationErrors);
+                return;
+            }
+
+            if (env('APP_DEBUG') === "true") {
                 $fileContent = file_exists($errorFile) ? file_get_contents($errorFile) : 'File not found.';
                 $lines = explode("\n", $fileContent);
                 $startLine = max(0, $errorLine - 10);
@@ -36,7 +46,7 @@ class ErrorHandler
 
                 echo str_replace(
                     ['{{ error_message }}', '{{ error_file }}', '{{ error_line }}', '{{ error_trace }}', '{{ file_content }}', '{{ file_extension }}'],
-                    [$errorMessage, $errorFile, $errorLine, $errorTrace, $formattedCode, $languageClass],
+                    [$errorMessage, $errorFile, $errorLine, nl2br(htmlspecialchars($errorTrace)), $formattedCode, $languageClass],
                     file_get_contents(__DIR__ . '/error_page_template.html')
                 );
             }
@@ -48,5 +58,44 @@ class ErrorHandler
 
             logger()->error($logMessage);
         });
+    }
+
+    /**
+     * Send a JSON error response for AJAX requests.
+     *
+     * @param string $errorMessage
+     * @param string $errorFile
+     * @param int $errorLine
+     * @param string $errorTrace
+     * @param int $statusCode
+     * @param array|null $validationErrors
+     */
+    public static function sendJsonErrorResponse(
+        string $errorMessage,
+        string $errorFile,
+        int $errorLine,
+        string $errorTrace,
+        int $statusCode,
+        mixed $validationErrors = null
+    ): void {
+        $response = [
+            'success' => false,
+            'message' => $errorMessage,
+            'error' => [
+                'file' => $errorFile,
+                'line' => $errorLine,
+                'trace' => $errorTrace,
+            ],
+        ];
+
+        if ($validationErrors) {
+            $response['errors'] = $validationErrors;
+        }
+
+        header('Content-Type: application/json');
+        http_response_code($statusCode);
+
+        echo json_encode($response);
+        exit;
     }
 }

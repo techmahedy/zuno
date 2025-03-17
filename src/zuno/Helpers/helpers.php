@@ -73,7 +73,7 @@ function request(): Request
 /**
  * Creates a new response instance to handle HTTP requests.
  *
- * @return Request A new instance of the Request class.
+ * @return Response A new instance of the Request class.
  */
 function response(): Response
 {
@@ -109,7 +109,7 @@ function redirect(): RedirectResponse
 /**
  * Creates a new redirect instance for handling HTTP redirects.
  *
- * @return Redirect A new instance of the Redirect class.
+ * @return Session A new instance of the Redirect class.
  */
 function session(): Session
 {
@@ -348,8 +348,6 @@ function abort_if(bool $condition, int $code, string $message = ''): void
     Abort::abortIf($condition, $code, $message);
 }
 
-
-
 /**
  * Mask a string with a specified number of visible characters at the start and end.
  * 
@@ -385,7 +383,6 @@ function truncateString(string $string, int $maxLength, string $suffix = '...'):
     return (strlen($string) > $maxLength) ? substr($string, 0, $maxLength) . $suffix : $string;
 }
 
-
 /**
  * Convert a camelCase string to snake_case.
  *
@@ -396,7 +393,6 @@ function camelToSnake(string $input): string
 {
     return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $input));
 }
-
 
 /**
  * Convert a snake_case string to camelCase.
