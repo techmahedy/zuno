@@ -408,3 +408,14 @@ function snakeToCamel(string $input): string
 {
     return lcfirst(str_replace('_', '', ucwords($input, '_')));
 }
+
+/**
+ * Generate a random alphanumeric string of a given length.
+ *
+ * @param int $length The length of the random string (default: 10).
+ * @return string The generated random string.
+ */
+function randomString(int $length = 10): string
+{
+    return substr(str_shuffle(str_repeat('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', $length)), 0, $length);
+}
