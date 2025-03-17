@@ -356,3 +356,15 @@ function camelToSnake(string $input): string
 {
     return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $input));
 }
+
+
+/**
+ * Convert a snake_case string to camelCase.
+ *
+ * @param string $input The snake_case string.
+ * @return string The converted camelCase string.
+ */
+function snakeToCamel(string $input): string
+{
+    return lcfirst(str_replace('_', '', ucwords($input, '_')));
+}
