@@ -13,7 +13,7 @@ class PasswordHashing
      * @return string
      * @throws RuntimeException
      */
-    public function make($password)
+    public  function make($password)
     {
         $driver = config('hashing.driver', 'bcrypt');
 

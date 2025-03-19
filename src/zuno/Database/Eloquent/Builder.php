@@ -473,6 +473,115 @@ class Builder
     }
 
     /**
+     * Insert a new record into the database.
+     *
+     * @param array $attributes
+     * @return int|false The ID of the inserted record or false on failure.
+     */
+    public function insert(array $attributes)
+    {
+        $columns = implode(', ', array_keys($attributes));
+        $values = implode(', ', array_fill(0, count($attributes), '?'));
+
+        $sql = "INSERT INTO {$this->table} ($columns) VALUES ($values)";
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $this->bindValuesForInsertOrUpdate($stmt, $attributes);
+            $stmt->execute();
+            return $this->pdo->lastInsertId();
+        } catch (PDOException $e) {
+            throw new PDOException("Database error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update records in the database.
+     *
+     * @param array $attributes
+     * @return bool
+     */
+    public function update(array $attributes): bool
+    {
+        $setClause = implode(', ', array_map(fn($key) => "$key = ?", array_keys($attributes)));
+
+        $sql = "UPDATE {$this->table} SET $setClause";
+
+        if (!empty($this->conditions)) {
+            $conditionStrings = [];
+            foreach ($this->conditions as $condition) {
+                $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
+            }
+            $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
+        }
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+
+            // Bind SET clause values
+            $index = 1;
+            foreach ($attributes as $value) {
+                $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
+            }
+
+            // Bind WHERE clause values
+            foreach ($this->conditions as $condition) {
+                $stmt->bindValue($index++, $condition[3], $this->getPdoParamType($condition[3]));
+            }
+
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            throw new PDOException("Database error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete records from the database.
+     *
+     * @return bool Returns true if the delete operation was successful, false otherwise.
+     * @throws PDOException If a database error occurs.
+     */
+    public function delete(): bool
+    {
+        $sql = "DELETE FROM {$this->table}";
+
+        if (!empty($this->conditions)) {
+            $conditionStrings = [];
+            foreach ($this->conditions as $condition) {
+                $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
+            }
+            $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
+        }
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $index = 1;
+            foreach ($this->conditions as $condition) {
+                $stmt->bindValue($index++, $condition[3], $this->getPdoParamType($condition[3]));
+            }
+
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            throw new PDOException("Database error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Bind values for INSERT or UPDATE operations.
+     *
+     * @param PDOStatement $stmt
+     * @param array $attributes
+     * @return void
+     */
+    protected function bindValuesForInsertOrUpdate(PDOStatement $stmt, array $attributes): void
+    {
+        $index = 1;
+        foreach ($attributes as $value) {
+            $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
+        }
+    }
+
+    /**
      * Get the PDO param type for a value.
      *
      * @param mixed $value

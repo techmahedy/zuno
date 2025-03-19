@@ -2,11 +2,11 @@
 
 namespace Zuno\Database\Eloquent;
 
-use Zuno\Contracts\Support\Jsonable;
+use Zuno\Database\Eloquent\Query\QueryCollection;
+use Zuno\Database\Contracts\Support\Jsonable;
 use Stringable;
 use JsonSerializable;
 use ArrayAccess;
-use Zuno\Database\Eloquent\Query\QueryCollection;
 
 /**
  * The Model class serves as the base class for all Eloquent models.
@@ -59,6 +59,14 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * @var int
      */
     protected $pageSize = 15;
+
+    /**
+     * Indicates whether the model should maintain timestamps (`created_at` and `updated_at` fields.).
+     *
+     * @var bool
+     */
+    protected $timeStamps = true;
+
 
     /**
      * Model constructor.
@@ -223,5 +231,21 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     public function offsetUnset($offset): void
     {
         unset($this->attributes[$offset]);
+    }
+
+    /**
+     * Delete the model from the database.
+     *
+     * @return bool True if the deletion was successful, false otherwise.
+     */
+    public function delete(): bool
+    {
+        if (!isset($this->attributes[$this->primaryKey])) {
+            return false;
+        }
+
+        return static::query()
+            ->where($this->primaryKey, '=', $this->attributes[$this->primaryKey])
+            ->delete();
     }
 }

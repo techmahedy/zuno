@@ -7,6 +7,7 @@ use Zuno\Providers\ServiceProvider;
 use Zuno\Providers\CoreProviders;
 use Zuno\Http\Response;
 use Zuno\Http\Request;
+use Zuno\Http\Exceptions\HttpResponseException;
 use Zuno\Http\Exceptions\HttpException;
 use Zuno\Error\ErrorHandler;
 use Zuno\DI\Container;
@@ -373,7 +374,7 @@ class Application extends Container
     public function dispatch($request): void
     {
         try {
-            $response = app(Router::class)->resolve($this, $request);
+            $response = app('route')->resolve($this, $request);
 
             if ($response instanceof \Zuno\Http\Response) {
                 $response->send();
@@ -381,6 +382,14 @@ class Application extends Container
                 echo $response;
             }
         } catch (HttpException $exception) {
+            if ($request->isAjax()) {
+                throw new HttpResponseException(
+                    response()->json(['errors' => $exception->getMessage()]),
+                    $exception->getMessage(),
+                    $exception->getStatusCode()
+                );
+            }
+
             Response::dispatchHttpException($exception);
         }
     }

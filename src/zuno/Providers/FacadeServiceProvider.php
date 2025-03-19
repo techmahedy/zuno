@@ -6,6 +6,7 @@ use Zuno\Support\UrlGenerator;
 use Zuno\Support\Storage\StorageFileService;
 use Zuno\Support\Session;
 use Zuno\Support\Mail\MailService;
+use Zuno\Support\LoggerService;
 use Zuno\Support\Encryption;
 use Zuno\Http\Support\RequestAbortion;
 use Zuno\Http\Response;
@@ -101,6 +102,12 @@ class FacadeServiceProvider extends ServiceProvider
         // This handles file uploads.
         $this->app->singleton('storage', function () {
             return new StorageFileService();
+        });
+
+        // Bind the 'log' service to a singleton instance of the Logger class.
+        // This handles user define log.
+        $this->app->singleton('log', function () {
+            return new LoggerService();
         });
     }
 

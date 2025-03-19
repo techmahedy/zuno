@@ -8,6 +8,9 @@ namespace Zuno\Support\Facades;
  * @method static \Zuno\Support\Router put(string $uri, array|string|callable|null)
  * @method static \Zuno\Support\Router patch(string $uri, array|string|callable|null)
  * @method static \Zuno\Support\Router delete(string $uri, array|string|callable|null)
+ * @method static \Zuno\Support\Router options(string $uri, array|string|callable|null)
+ * @method static \Zuno\Support\Router head(string $uri, array|string|callable|null)
+ * @method static \Zuno\Support\Router any(string $uri, array|string|callable|null)
  * @see \Zuno\Support\Router
  */
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace Zuno\Contracts\Support;
+namespace Zuno\Database\Contracts\Support;
 
 interface Jsonable
 {

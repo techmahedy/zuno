@@ -11,7 +11,6 @@ use Zuno\Http\Rule;
 use Zuno\Http\ParameterBag;
 use Zuno\Http\InputBag;
 use Zuno\Http\HeaderBag;
-use App\Models\User;
 
 class Request
 {
@@ -40,6 +39,7 @@ class Request
     public const METHOD_OPTIONS = "OPTIONS";
     public const METHOD_TRACE = "TRACE";
     public const METHOD_CONNECT = "CONNECT";
+    public const METHOD_ANY = "ANY";
 
     // Mappings for forwarded parameters.
     private const FORWARDED_PARAMS = [
@@ -70,6 +70,7 @@ class Request
         self::METHOD_PATCH,
         self::METHOD_PURGE,
         self::METHOD_TRACE,
+        self::METHOD_ANY,
     ];
 
     public InputBag $request;
@@ -140,27 +141,38 @@ class Request
         $request = $_POST + $_GET;
 
         $contentType = $this->server->get("CONTENT_TYPE", "");
-        $requestMethod = strtoupper(
-            $this->server->get("REQUEST_METHOD", "GET")
-        );
+        $requestMethod = strtoupper($this->server->get("REQUEST_METHOD", "GET"));
 
         if (
-            str_starts_with(
-                $contentType,
-                "application/x-www-form-urlencoded"
-            ) &&
-            in_array($requestMethod, ["PUT", "DELETE", "PATCH"], true)
+            str_starts_with($contentType, "application/json") &&
+            in_array($requestMethod, ["PUT", "DELETE", "PATCH", "POST", "ANY", "HEAD", "OPTIONS"], true)
+        ) {
+            $rawContent = $this->getContent();
+            if ($rawContent !== false) {
+                $jsonData = json_decode($rawContent, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $request = array_merge($request, $jsonData);
+                } else {
+                    throw new \RuntimeException("Invalid JSON data in request body.");
+                }
+            } else {
+                throw new \RuntimeException("Unable to retrieve request content.");
+            }
+        } elseif (
+            str_starts_with($contentType, "application/x-www-form-urlencoded") &&
+            in_array($requestMethod, ["PUT", "DELETE", "PATCH", "POST", "ANY", "HEAD", "OPTIONS"], true)
         ) {
             $rawContent = $this->getContent();
             if ($rawContent !== false) {
                 parse_str($rawContent, $data);
                 $request = $data;
             } else {
-                // Handle error: unable to get raw content
-                throw new \RuntimeException(
-                    "Unable to retrieve request content."
-                );
+                throw new \RuntimeException("Unable to retrieve request content.");
             }
+        }
+
+        if (!$this->isValidRequest()) {
+            throw new \RuntimeException("Invalid request.");
         }
 
         return $request;
@@ -238,28 +250,32 @@ class Request
     public function isValidRequest(): bool
     {
         if (empty($this->trustedProxies)) {
-            return true; // No trusted proxies, all requests are valid.
+            // No trusted proxies, all requests are valid.
+            return true;
         }
 
         $remoteAddress = $this->server->get("REMOTE_ADDR");
 
         if (!in_array($remoteAddress, $this->trustedProxies, true)) {
-            return true; // Request not from a trusted proxy.
+            // Request not from a trusted proxy.
+            return true;
         }
 
         if ($this->trustedHeaderSet === 0) {
-            return true; // No trusted headers set, all requests are valid.
+            // No trusted headers set, all requests are valid.
+            return true;
         }
 
         foreach (self::TRUSTED_HEADERS as $headerBit => $headerName) {
             if (($this->trustedHeaderSet & $headerBit) === $headerBit) {
                 if (!$this->server->has("HTTP_" . $headerName)) {
-                    return false; // Required trusted header is missing.
+                    // Required trusted header is missing.
+                    return false;
                 }
             }
         }
 
-        return true; // All checks passed, request is valid.
+        return true;
     }
 
     /**
@@ -294,6 +310,7 @@ class Request
     public function getTrustedHeaderValue(int $headerConstant): ?string
     {
         $headerName = self::TRUSTED_HEADERS[$headerConstant] ?? null;
+
         return $headerName ? $this->headers->get($headerName) : null;
     }
 
@@ -419,6 +436,25 @@ class Request
         return $this->getMethod() === "DELETE";
     }
 
+    /**
+     * Check if the request method is HEAD.
+     *
+     * @return bool
+     */
+    public function isHead(): bool
+    {
+        return $this->getMethod() === 'HEAD';
+    }
+
+    /**
+     * Check if the request method is ANY.
+     *
+     * @return bool
+     */
+    public function isAny(): bool
+    {
+        return true;
+    }
 
     /**
      * Sets route parameters for the request.
@@ -479,26 +515,6 @@ class Request
     public function session(): Session
     {
         return $this->session;
-    }
-
-    /**
-     * Get the currently authenticated user.
-     *
-     * @return \Zuno\Models\User|null
-     */
-    public function user(): ?User
-    {
-        if (isset($_SESSION['user'])) {
-            $user = User::find($_SESSION['user']->id);
-            $reflectionProperty = new \ReflectionProperty(User::class, 'unexposable');
-            $reflectionProperty->setAccessible(true);
-            if ($user) {
-                $user->makeHidden($reflectionProperty->getValue($user));
-                return $user;
-            }
-        }
-
-        return null;
     }
 
     /**

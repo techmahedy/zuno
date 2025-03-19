@@ -4,8 +4,9 @@ namespace Zuno\Auth\Security;
 
 use Zuno\Support\Facades\Hash;
 use App\Models\User;
+use Zuno\Database\Eloquent\Model;
 
-class Authenticate
+class Authenticate extends Model
 {
     private $data = [];
 
@@ -23,9 +24,10 @@ class Authenticate
      * Attempt to log the user in with email and password.
      *
      * @param array $credentials
+     * @param bool $remember
      * @return bool
      */
-    public function try(array $credentials = []): bool
+    public function try(array $credentials = [], bool $remember = false): bool
     {
         $email = $credentials['email'] ?? '';
         $password = $credentials['password'] ?? '';
@@ -36,11 +38,15 @@ class Authenticate
 
         $user = User::query()
             ->where('email', '=', $email)
-            ->orWhere('username', '=', $email)
             ->first();
 
         if ($user && Hash::check($password, $user->password)) {
             self::setUser($user);
+
+            if ($remember) {
+                $this->setRememberToken($user);
+            }
+
             return true;
         }
 
@@ -64,6 +70,17 @@ class Authenticate
             }
         }
 
+        // Check for remember token
+        if (isset($_COOKIE['remember_token'])) {
+            $user = User::query()
+                ->where('remember_token', '=', $_COOKIE['remember_token'])
+                ->first();
+            if ($user) {
+                self::setUser($user);
+                return $user;
+            }
+        }
+
         return null;
     }
 
@@ -83,6 +100,9 @@ class Authenticate
     public function logout()
     {
         unset($_SESSION['user']);
+        if (isset($_COOKIE['remember_token'])) {
+            setcookie('remember_token', '', time() - 3600, '/');
+        }
     }
 
     /**
@@ -96,14 +116,26 @@ class Authenticate
     }
 
     /**
-     * ! Todo: Future implementation
+     * Set the remember token for the user.
+     *
+     * @param \Zuno\Models\User $user
+     */
+    private function setRememberToken(User $user)
+    {
+        $token = bin2hex(random_bytes(30));
+        $user->remember_token = $token;
+        $user->save();
+
+        setcookie('remember_token', $token, time() + 3600 * 24 * 30, '/');
+    }
+
+    /**
      * Determine if the user was logged in via remember me token.
-     * This is a stub for now as it requires implementing remember token handling.
      *
      * @return bool
      */
     public function viaRemember(): bool
     {
-        return false;
+        return isset($_COOKIE['remember_token']);
     }
 }

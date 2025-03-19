@@ -2,6 +2,7 @@
 
 namespace Zuno\Database\Eloquent\Query;
 
+use Carbon\Carbon;
 use Zuno\Database\Eloquent\Builder;
 use Zuno\Database\Database;
 use Zuno\Support\Collection;
@@ -99,5 +100,69 @@ trait QueryCollection
         }
 
         return $json;
+    }
+
+    /**
+     * Save the model to the database.
+     *
+     * @return bool
+     */
+    public function save(): bool
+    {
+        $attributes = $this->getCreatableAttributes();
+
+        if (isset($this->attributes[$this->primaryKey])) {
+            if ($this->timeStamps) {
+                $attributes['updated_at'] = Carbon::now();
+            }
+
+            $primaryKeyValue = $this->attributes[$this->primaryKey];
+            return $this->query()
+                ->where($this->primaryKey, '=', $primaryKeyValue)
+                ->update($attributes);
+        }
+
+        if ($this->timeStamps) {
+            $attributes['created_at'] = Carbon::now();
+            $attributes['updated_at'] = Carbon::now();
+        }
+
+        $id = $this->query()->insert($attributes);
+        if ($id) {
+            $this->attributes[$this->primaryKey] = $id;
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Create a new model instance and save it to the database.
+     *
+     * @param array $attributes
+     * @return static
+     */
+    public static function create(array $attributes): static
+    {
+        $model = new static();
+        $model->fill($attributes);
+        $model->save();
+        return $model;
+    }
+
+    /**
+     * Get the attributes that are allowed to be mass-assigned.
+     *
+     * @return array
+     */
+    protected function getCreatableAttributes(): array
+    {
+        $creatableAttributes = [];
+        foreach ($this->creatable as $attribute) {
+            if (isset($this->attributes[$attribute])) {
+                $creatableAttributes[$attribute] = $this->attributes[$attribute];
+            }
+        }
+        return $creatableAttributes;
     }
 }

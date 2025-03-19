@@ -3,11 +3,14 @@
 namespace Zuno\Support;
 
 use Zuno\Middleware\Contracts\Middleware as ContractsMiddleware;
+use Zuno\Http\Validation\FormRequest;
+use Zuno\Http\Validation\Contracts\ValidatesWhenResolved;
 use Zuno\Http\Response;
 use Zuno\Http\Request;
-use Zuno\DI\Container;
+use Zuno\Application;
 use Ramsey\Collection\Collection;
 use App\Http\Kernel;
+use App\Http\Validations\LoginRequest;
 
 class Router extends Kernel
 {
@@ -51,6 +54,9 @@ class Router extends Kernel
         'PUT' => [],
         'PATCH' => [],
         'DELETE' => [],
+        'OPTIONS' => [],
+        'HEAD' => [],
+        'ANY' => [],
     ];
 
     /**
@@ -62,11 +68,9 @@ class Router extends Kernel
      */
     public function get($path, $callback): self
     {
-        if (
-            request()->_method === 'PUT' ||
-            request()->_method === 'PATCH' ||
-            request()->_method === 'DELETE'
-        ) {
+        $modifiedRequest = ['PUT', 'PATCH', 'DELETE', 'OPTIONS', 'ANY', 'HEAD'];
+
+        if (in_array(request()->_method, $modifiedRequest)) {
             $this->currentRequestMethod = request()->_method;
             self::$routes[request()->_method][$path] = $callback;
             $this->currentRoutePath = $path;
@@ -77,6 +81,53 @@ class Router extends Kernel
         $this->currentRequestMethod = 'GET';
         self::$routes['GET'][$path] = $callback;
         $this->currentRoutePath = $path;
+
+        return $this;
+    }
+
+    /**
+     * Registers an OPTIONS route with a callback.
+     *
+     * @param string $path The route path.
+     * @param callable $callback The callback for the route.
+     * @return self
+     */
+    public function options($path, $callback): self
+    {
+        $this->currentRequestMethod = 'OPTIONS';
+        self::$routes['OPTIONS'][$path] = $callback;
+        $this->currentRoutePath = $path;
+
+        return $this;
+    }
+
+    /**
+     * Registers a HEAD route with a callback.
+     *
+     * @param string $path The route path.
+     * @param callable $callback The callback for the route.
+     * @return self
+     */
+    public function head($path, $callback): self
+    {
+        $this->currentRequestMethod = 'HEAD';
+        self::$routes['HEAD'][$path] = $callback;
+        $this->currentRoutePath = $path;
+
+        return $this;
+    }
+
+    /**
+     * Registers a route that matches any HTTP method.
+     *
+     * @param string $path The route path.
+     * @param callable $callback The callback for the route.
+     * @return self
+     */
+    public function any($path, $callback): self
+    {
+        $method = request()->_method ?? request()->getMethod();
+        self::$routes[$method][$path] = $callback;
 
         return $this;
     }
@@ -181,7 +232,8 @@ class Router extends Kernel
             if (preg_match('/\{(\w+)(:[^}]+)?}/', $route, $matches)) {
                 $params = [$matches[1] => $params];
             } else {
-                $params = [$params]; // Fallback in case there's no named parameter
+                // Fallback in case there's no named parameter
+                $params = [$params];
             }
         }
 
@@ -227,16 +279,16 @@ class Router extends Kernel
         $method = $request->getMethod();
         $url = $request->getPath();
         $routes = self::$routes[$method] ?? [];
-
         $routeParams = false;
 
-        // Start iterating registed routes
         foreach ($routes as $route => $callback) {
-            // Trim slashes
             $routeNames = [];
+            if (!$route) continue;
 
-            if (!$route) {
-                continue;
+            // Handle wildcard routes (.*)
+            if ($route === '(.*)') {
+                // Directly return the callback for wildcard routes
+                return $callback;
             }
 
             // Find all route names from route and save in $routeNames
@@ -260,6 +312,7 @@ class Router extends Kernel
                 return $callback;
             }
         }
+
         return false;
     }
 
@@ -318,13 +371,13 @@ class Router extends Kernel
 
     /**
      * Resolves and executes the route callback with middleware and dependencies.
-     * @param Container $container
+     * @param Application $app
      * @param Request $request
      * @throws \ReflectionException If there is an issue with reflection.
      * @throws \Exception
      * @return Response
      */
-    public function resolve(Container $container, Request $request)
+    public function resolve(Application $app, Request $request)
     {
         $currentMiddleware = $this->getCurrentRouteMiddleware($request);
 
@@ -335,41 +388,12 @@ class Router extends Kernel
         if (!$callback) abort(404);
 
         $routeParams = $request->getRouteParams();
-        $finalHandler = function ($request) use ($callback, $container, $routeParams) {
+        $finalHandler = function ($request) use ($callback, $app, $routeParams) {
             if (is_array($callback)) {
-                $result = $this->resolveControllerAction($callback, $container, $routeParams);
+                $result = $this->resolveControllerAction($callback, $app, $routeParams);
             } elseif (is_string($callback) && class_exists($callback)) {
-                $controller = $container->get($callback);
-                $reflectionMethod = new \ReflectionMethod($controller, '__invoke');
-                $parameters = $reflectionMethod->getParameters();
-
-                $resolvedParameters = [];
-                foreach ($parameters as $parameter) {
-                    $paramName = $parameter->getName();
-                    $paramType = $parameter->getType();
-
-                    if ($paramType) {
-                        // If the parameter is a class, resolve it from the container
-                        if (class_exists($paramType->getName())) {
-                            $resolvedParameters[] = $container->get($paramType->getName());
-                        }
-                        // If the parameter is a route parameter, use the value from $routeParams
-                        elseif (array_key_exists($paramName, $routeParams)) {
-                            $resolvedParameters[] = $routeParams[$paramName];
-                        }
-                    } else {
-                        // If the parameter is not type-hinted, try to resolve it from $routeParams
-                        if (array_key_exists($paramName, $routeParams)) {
-                            $resolvedParameters[] = $routeParams[$paramName];
-                        } else {
-                            // If the parameter is not found, throw an exception or provide a default value
-                            throw new \Exception("Unable to resolve parameter: {$paramName}");
-                        }
-                    }
-                }
-
-                // Call the __invoke method with resolved parameters
-                $result = $controller->__invoke(...$resolvedParameters);
+                $controller = $app->get($callback);
+                $result = $this->handleInvokableAction($app, $controller, $routeParams);
             } else {
                 $result = call_user_func($callback, ...array_values($routeParams));
             }
@@ -390,24 +414,69 @@ class Router extends Kernel
     }
 
     /**
+     * Handling __invokable controller actions
+     * @param mixed $app
+     * @param mixed $controller
+     * @param mixed $routeParams
+     * @return mixed
+     * @throws \ReflectionException If there is an issue with reflection.
+     * @throws \Exception If dependency resolution fails.
+     */
+    public function handleInvokableAction($app, $controller, $routeParams): mixed
+    {
+        $reflectionMethod = new \ReflectionMethod($controller, '__invoke');
+        $parameters = $reflectionMethod->getParameters();
+
+        $resolvedParameters = [];
+        foreach ($parameters as $parameter) {
+            $paramName = $parameter->getName();
+            $paramType = $parameter->getType();
+
+            if ($paramType) {
+                // If the parameter is a class, resolve it from the Application instance
+                if (class_exists($paramType->getName())) {
+                    $resolvedParameters[] = $app->get($paramType->getName());
+                }
+                // If the parameter is a route parameter, use the value from $routeParams
+                elseif (array_key_exists($paramName, $routeParams)) {
+                    $resolvedParameters[] = $routeParams[$paramName];
+                }
+            } else {
+                // If the parameter is not type-hinted, try to resolve it from $routeParams
+                if (array_key_exists($paramName, $routeParams)) {
+                    $resolvedParameters[] = $routeParams[$paramName];
+                } else {
+                    // If the parameter is not found, throw an exception or provide a default value
+                    throw new \Exception("Unable to resolve parameter: {$paramName}");
+                }
+            }
+        }
+
+        // Call the __invoke method with resolved parameters
+        $result = $controller->__invoke(...$resolvedParameters);
+
+        return $result;
+    }
+
+    /**
      * Resolves and executes a controller action with dependencies.
      *
      * @param array $callback The controller callback (e.g., [Controller::class, 'action']).
-     * @param Container $container The container for resolving dependencies.
+     * @param Application $app The Application instance for resolving dependencies.
      * @param array $routeParams The route parameters.
      * @return mixed The result of the controller action execution.
      * @throws \ReflectionException If there is an issue with reflection.
      * @throws \Exception If dependency resolution fails.
      */
-    private function resolveControllerAction(array $callback, $container, array $routeParams): mixed
+    private function resolveControllerAction(array $callback, $app, array $routeParams): mixed
     {
         [$controllerClass, $actionMethod] = $callback;
         $reflector = new \ReflectionClass($controllerClass);
 
-        $constructorDependencies = $this->resolveConstructorDependencies($reflector, $container, $routeParams);
+        $constructorDependencies = $this->resolveConstructorDependencies($reflector, $app, $routeParams);
         $controllerInstance = new $controllerClass(...$constructorDependencies);
 
-        $actionDependencies = $this->resolveActionDependencies($reflector, $actionMethod, $container, $routeParams);
+        $actionDependencies = $this->resolveActionDependencies($reflector, $actionMethod, $app, $routeParams);
 
         return call_user_func([$controllerInstance, $actionMethod], ...$actionDependencies);
     }
@@ -416,14 +485,14 @@ class Router extends Kernel
      * Resolves constructor dependencies for a controller.
      *
      * @param \ReflectionClass $reflector The reflection class of the controller.
-     * @param Container $container The container for resolving dependencies.
+     * @param $app The Application instance for resolving dependencies.
      * @param array $routeParams The route parameters.
      * @return array The resolved constructor dependencies.
      * @throws \Exception If dependency resolution fails.
      */
     private function resolveConstructorDependencies(
         \ReflectionClass $reflector,
-        $container,
+        $app,
         array $routeParams
     ): array {
         $constructor = $reflector->getConstructor();
@@ -431,7 +500,7 @@ class Router extends Kernel
             return [];
         }
 
-        return $this->resolveParameters($constructor->getParameters(), $container, $routeParams);
+        return $this->resolveParameters($constructor->getParameters(), $app, $routeParams);
     }
 
     /**
@@ -439,7 +508,7 @@ class Router extends Kernel
      *
      * @param \ReflectionClass $reflector The reflection class of the controller.
      * @param string $actionMethod The name of the action method.
-     * @param Container $container The container for resolving dependencies.
+     * @param $app The Application instance for resolving dependencies.
      * @param array $routeParams The route parameters.
      * @return array The resolved action dependencies.
      * @throws \ReflectionException If there is an issue with reflection.
@@ -448,24 +517,24 @@ class Router extends Kernel
     private function resolveActionDependencies(
         \ReflectionClass $reflector,
         string $actionMethod,
-        $container,
+        $app,
         array $routeParams
     ): array {
         $method = $reflector->getMethod($actionMethod);
 
-        return $this->resolveParameters($method->getParameters(), $container, $routeParams);
+        return $this->resolveParameters($method->getParameters(), $app, $routeParams);
     }
 
     /**
      * Resolves parameters for a method or constructor.
      *
      * @param array $parameters The parameters to resolve.
-     * @param Container $container The container for resolving dependencies.
+     * @param $app The Application instance for resolving dependencies.
      * @param array $routeParams The route parameters.
      * @return array The resolved parameters.
      * @throws \Exception If dependency resolution fails.
      */
-    private function resolveParameters(array $parameters, $container, array $routeParams): array
+    private function resolveParameters(array $parameters, $app, array $routeParams): array
     {
         $dependencies = [];
         foreach ($parameters as $parameter) {
@@ -474,12 +543,22 @@ class Router extends Kernel
 
             if ($paramType && !$paramType->isBuiltin()) {
                 $resolvedClass = $paramType->getName();
-                if (is_subclass_of($resolvedClass, \Zuno\Database\Eloquent\Model::class)) {
-                    $modelId = $routeParams[$paramName] ?? null;
-                    $dependencies[] = $modelId ? $resolvedClass::findOrFail($modelId) : $container->get($resolvedClass);
-                } else {
-                    $dependencies[] = $container->get($resolvedClass);
+
+                if (!$app->has($resolvedClass)) {
+                    if (is_subclass_of($resolvedClass, FormRequest::class)) {
+                        $app->singleton($resolvedClass, function () use ($app, $resolvedClass) {
+                            return new $resolvedClass($app->get(Request::class));
+                        });
+                    } else {
+                        $app->singleton($resolvedClass, $resolvedClass);
+                    }
                 }
+
+                $resolvedInstance = app($resolvedClass);
+                if ($resolvedInstance instanceof FormRequest) {
+                    $resolvedInstance->resolvedFormRequestValidation();
+                }
+                $dependencies[] = $resolvedInstance;
             } elseif (isset($routeParams[$paramName])) {
                 $dependencies[] = $routeParams[$paramName];
             } elseif ($parameter->isOptional()) {
@@ -488,6 +567,7 @@ class Router extends Kernel
                 throw new \Exception("Cannot resolve parameter '$paramName' in route callback");
             }
         }
+
         return $dependencies;
     }
 }

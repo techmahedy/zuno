@@ -3,6 +3,7 @@
 namespace Zuno\Http\Support;
 
 use Zuno\Support\Facades\Auth;
+use App\Models\User;
 
 trait RequestHelper
 {
@@ -19,6 +20,13 @@ trait RequestHelper
      * @var array<string, mixed>
      */
     public array $errors = [];
+
+    /**
+     * Stores the input data.
+     *
+     * @var array<string, mixed>
+     */
+    public array $input = [];
 
     /**
      * Retrieves all input data except for the specified keys.
@@ -144,8 +152,28 @@ trait RequestHelper
      *
      * @return \App\Models\User|null The authenticated user instance or null if no user is authenticated.
      */
-    public function auth(): ?\App\Models\User
+    public function auth(): ?User
     {
         return Auth::user() ?? null;
+    }
+
+    /**
+     * Get the currently authenticated user.
+     *
+     * @return \Zuno\Models\User|null
+     */
+    public function user(): ?User
+    {
+        if (isset($_SESSION['user'])) {
+            $user = User::find($_SESSION['user']->id);
+            $reflectionProperty = new \ReflectionProperty(User::class, 'unexposable');
+            $reflectionProperty->setAccessible(true);
+            if ($user) {
+                $user->makeHidden($reflectionProperty->getValue($user));
+                return $user;
+            }
+        }
+
+        return null;
     }
 }

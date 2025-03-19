@@ -3,7 +3,7 @@
 namespace Zuno\Support\Facades;
 
 /**
- * @method static \Zuno\Auth\Security\Authenticate try(array $credentials)
+ * @method static \Zuno\Auth\Security\Authenticate try(array $credentials, bool $remember = false)
  * @method static \Zuno\Auth\Security\Authenticate user()
  * @method static \Zuno\Auth\Security\Authenticate check()
  * @method static \Zuno\Auth\Security\Authenticate logout()

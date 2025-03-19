@@ -7,13 +7,13 @@ use Zuno\Support\Facades\Auth;
 use Zuno\Support\Facades\Abort;
 use Zuno\Session\Input;
 use Zuno\Session\FlashMessage;
-use Zuno\Logger\Log as Reader;
 use Zuno\Http\Response;
 use Zuno\Http\Request;
 use Zuno\Http\RedirectResponse;
 use Zuno\Http\Controllers\Controller;
 use Zuno\DI\Container;
 use Zuno\Config\Config;
+use Zuno\Support\Facades\Log;
 
 /**
  * Gets an environment variable from available sources, and provides emulation
@@ -145,16 +145,6 @@ function bcrypt(string $value): string
 function old($key): ?string
 {
     return Input::old($key);
-}
-
-/**
- * Creates and returns a logger instance for logging messages.
- *
- * @return \Monolog\Logger An instance of the Monolog Logger.
- */
-function logger(): \Monolog\Logger
-{
-    return app(Reader::class)->logReader();
 }
 
 /**
@@ -358,7 +348,7 @@ function abort_if(bool $condition, int $code, string $message = ''): void
  * 
  * @return string The masked string
  */
-function maskString(string $string, int $visibleFromStart = 1, int $visibleFromEnd = 1, string $maskCharacter = '*'): string
+function mask_str(string $string, int $visibleFromStart = 1, int $visibleFromEnd = 1, string $maskCharacter = '*'): string
 {
     $length = strlen($string);
 
@@ -378,7 +368,7 @@ function maskString(string $string, int $visibleFromStart = 1, int $visibleFromE
  * @param string $suffix The suffix to append if truncated (default: '...').
  * @return string The truncated string.
  */
-function truncateString(string $string, int $maxLength, string $suffix = '...'): string
+function truncate_str(string $string, int $maxLength, string $suffix = '...'): string
 {
     return (strlen($string) > $maxLength) ? substr($string, 0, $maxLength) . $suffix : $string;
 }
@@ -389,7 +379,7 @@ function truncateString(string $string, int $maxLength, string $suffix = '...'):
  * @param string $input The camelCase string.
  * @return string The converted snake_case string.
  */
-function camelToSnake(string $input): string
+function camel_to_snake(string $input): string
 {
     return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $input));
 }
@@ -400,7 +390,7 @@ function camelToSnake(string $input): string
  * @param string $input The snake_case string.
  * @return string The converted camelCase string.
  */
-function snakeToCamel(string $input): string
+function snake_to_camel(string $input): string
 {
     return lcfirst(str_replace('_', '', ucwords($input, '_')));
 }
@@ -411,7 +401,7 @@ function snakeToCamel(string $input): string
  * @param int $length The length of the random string (default: 10).
  * @return string The generated random string.
  */
-function randomString(int $length = 10): string
+function random_str(int $length = 10): string
 {
     return substr(str_shuffle(str_repeat('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', $length)), 0, $length);
 }
@@ -422,7 +412,7 @@ function randomString(int $length = 10): string
  * @param string $string The input string.
  * @return bool Returns true if the string is a palindrome, false otherwise.
  */
-function isPalindrome(string $string): bool
+function is_palindrome(string $string): bool
 {
     $cleaned = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $string));
     return $cleaned === strrev($cleaned);
@@ -434,7 +424,95 @@ function isPalindrome(string $string): bool
  * @param string $string The input string.
  * @return int The word count.
  */
-function wordCount(string $string): int
+function count_word(string $string): int
 {
     return str_word_count($string);
+}
+
+/**
+ * Log helper
+ *
+ * @param mixed
+ * @return void
+ */
+function info(mixed $payload): void
+{
+    Log::info($payload);
+}
+
+/**
+ * Log helper
+ *
+ * @param mixed
+ * @return void
+ */
+function warning(mixed $payload): void
+{
+    Log::warning($payload);
+}
+
+/**
+ * Log helper
+ *
+ * @param mixed
+ * @return void
+ */
+function error(mixed $payload): void
+{
+    Log::error($payload);
+}
+
+/**
+ * Log helper
+ *
+ * @param mixed
+ * @return void
+ */
+function alert(mixed $payload): void
+{
+    Log::alert($payload);
+}
+
+/**
+ * Log helper
+ *
+ * @param mixed
+ * @return void
+ */
+function notice(mixed $payload): void
+{
+    Log::notice($payload);
+}
+
+/**
+ * Log helper
+ *
+ * @param mixed
+ * @return void
+ */
+function emergency(mixed $payload): void
+{
+    Log::emergency($payload);
+}
+
+/**
+ * Log helper
+ *
+ * @param mixed
+ * @return void
+ */
+function critical(mixed $payload): void
+{
+    Log::critical($payload);
+}
+
+/**
+ * Log helper
+ *
+ * @param mixed
+ * @return void
+ */
+function debug(mixed $payload): void
+{
+    Log::debug($payload);
 }

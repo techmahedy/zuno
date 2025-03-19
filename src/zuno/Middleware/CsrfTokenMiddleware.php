@@ -28,7 +28,7 @@ class CsrfTokenMiddleware implements Middleware
     public function __invoke(Request $request, Closure $next): Response
     {
         $token = $request->headers->get('X-CSRF-TOKEN') ?? $request->_token;
-
+        $request->merge(['name' => 'mahedi']);
         if ($this->isModifyingRequest($request) && empty($token)) {
             return $this->handleError($request, "Unauthorized, CSRF Token not found");
         }

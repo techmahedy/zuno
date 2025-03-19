@@ -3,6 +3,7 @@
 namespace Zuno\Error;
 
 use Zuno\Http\Exceptions\HttpResponseException;
+use Zuno\Support\Facades\Log;
 
 class ErrorHandler
 {
@@ -56,7 +57,7 @@ class ErrorHandler
             $logMessage .= "\nLine: " . $exception->getLine();
             $logMessage .= "\nTrace: " . $exception->getTraceAsString();
 
-            logger()->error($logMessage);
+            Log::channel(env('LOG_CHANNEL', 'stack'))->error($logMessage);
         });
     }
 

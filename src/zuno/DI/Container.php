@@ -2,6 +2,9 @@
 
 namespace Zuno\DI;
 
+use Zuno\Http\Validation\FormRequest;
+use App\Http\Validations\LoginRequest;
+
 class Container
 {
     /**

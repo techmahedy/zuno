@@ -3,6 +3,7 @@
 namespace Zuno\Http;
 
 use Zuno\Http\Response\HttpStatus;
+use Zuno\Http\Exceptions\HttpResponseException;
 use Zuno\Http\Exceptions\HttpException;
 
 /**
@@ -222,29 +223,15 @@ class Response implements HttpStatus
 
         http_response_code($statusCode);
 
-        if (self::isJsonRequest()) {
-            echo json_encode([
-                'error' => [
-                    'code' => $statusCode,
-                    'message' => $message,
-                ],
-            ]);
-            return;
+        if (request()->isAjax()) {
+            throw new HttpResponseException(
+                response()->json(['errors' => $message]),
+                $message,
+                $statusCode
+            );
         }
 
         self::renderErrorPage($statusCode, $message);
-    }
-
-    /**
-     * Check if the request expects a JSON response.
-     *
-     * This method checks the `Accept` header to determine if the client expects JSON.
-     *
-     * @return bool True if the request expects JSON, false otherwise.
-     */
-    protected static function isJsonRequest(): bool
-    {
-        return isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false;
     }
 
     /**
@@ -259,9 +246,11 @@ class Response implements HttpStatus
      */
     protected static function renderErrorPage(int $statusCode, string $message): void
     {
+        $customPath = base_path() . "/resources/views/errors/{$statusCode}.blade.php";
         $errorPage = base_path() . "/vendor/zuno/zuno/src/zuno/Support/View/errors/{$statusCode}.blade.php";
-
-        if (file_exists($errorPage)) {
+        if (file_exists($customPath)) {
+            include $customPath;
+        } elseif (file_exists($errorPage)) {
             include $errorPage;
         } else {
             throw new HttpException($statusCode, $message);
