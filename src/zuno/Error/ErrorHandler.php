@@ -2,8 +2,8 @@
 
 namespace Zuno\Error;
 
-use Zuno\Http\Exceptions\HttpResponseException;
 use Zuno\Support\Facades\Log;
+use Zuno\Http\Exceptions\HttpResponseException;
 
 class ErrorHandler
 {
