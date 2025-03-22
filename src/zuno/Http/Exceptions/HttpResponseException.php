@@ -9,13 +9,6 @@ use Throwable;
 class HttpResponseException extends RuntimeException
 {
     /**
-     * The underlying response instance.
-     *
-     * @var \Zuno\Http\Response
-     */
-    protected $response;
-
-    /**
      * The validation errors.
      *
      * @var mixed
@@ -32,33 +25,20 @@ class HttpResponseException extends RuntimeException
     /**
      * Create a new HTTP response exception instance.
      *
-     * @param \Zuno\Http\Response $response
      * @param mixed $validationErrors
      * @param int $statusCode
      * @param \Throwable|null $previous
      * @return void
      */
     public function __construct(
-        Response $response,
         mixed $validationErrors = null,
         int $statusCode = 500,
         ?Throwable $previous = null
     ) {
         parent::__construct($previous?->getMessage() ?? '', $previous?->getCode() ?? 0, $previous);
 
-        $this->response = $response;
         $this->validationErrors = $validationErrors;
         $this->statusCode = $statusCode;
-    }
-
-    /**
-     * Get the underlying response instance.
-     *
-     * @return \Zuno\Http\Response
-     */
-    public function getResponse(): Response
-    {
-        return $this->response;
     }
 
     /**

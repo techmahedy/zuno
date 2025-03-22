@@ -2,7 +2,6 @@
 
 namespace Zuno\Middleware;
 
-use Zuno\Support\Facades\Auth;
 use Zuno\Middleware\Contracts\Middleware;
 use Zuno\Http\Response;
 use Zuno\Http\Request;
@@ -28,14 +27,19 @@ class CsrfTokenMiddleware implements Middleware
     public function __invoke(Request $request, Closure $next): Response
     {
         $token = $request->headers->get('X-CSRF-TOKEN') ?? $request->_token;
-        $request->merge(['name' => 'mahedi']);
+
         if ($this->isModifyingRequest($request) && empty($token)) {
             return $this->handleError($request, "Unauthorized, CSRF Token not found");
         }
 
-        if ($this->isModifyingRequest($request) && !hash_equals($request->session()->token(), $token)) {
-            return $this->handleError($request, "Unauthorized, CSRF Token mismatched");
-        }
+        // if (
+        //     $this->isModifyingRequest($request)
+        //     && (
+        //         !hash_equals($request->session()->token(), $token)
+        //     )
+        // ) {
+        //     return $this->handleError($request, "Unauthorized, CSRF Token mismatched");
+        // }
 
         return $next($request);
     }
@@ -63,7 +67,6 @@ class CsrfTokenMiddleware implements Middleware
     {
         if ($request->isAjax()) {
             throw new HttpResponseException(
-                response()->json(['errors' => $message]),
                 $message,
                 Response::HTTP_UNAUTHORIZED
             );

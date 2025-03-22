@@ -2,18 +2,20 @@
 
 use Zuno\Utilities\Paginator;
 use Zuno\Support\Session;
+use Zuno\Support\Facades\Log;
 use Zuno\Support\Facades\Hash;
 use Zuno\Support\Facades\Auth;
 use Zuno\Support\Facades\Abort;
-use Zuno\Session\Input;
+use Zuno\Support\Collection;
+use Zuno\Session\MessageBag;
 use Zuno\Session\FlashMessage;
+use Zuno\Http\Response\RedirectResponse;
+use Zuno\Http\ResponseFactory;
 use Zuno\Http\Response;
 use Zuno\Http\Request;
-use Zuno\Http\RedirectResponse;
 use Zuno\Http\Controllers\Controller;
 use Zuno\DI\Container;
 use Zuno\Config\Config;
-use Zuno\Support\Facades\Log;
 
 /**
  * Gets an environment variable from available sources, and provides emulation
@@ -73,11 +75,20 @@ function request(): Request
 /**
  * Creates a new response instance to handle HTTP requests.
  *
- * @return Response A new instance of the Request class.
+ * @param null $content
+ * @param int $status
+ * @param array $headers
+ * @return ($content is null ? \Zuno\Http\ResponseFactory : \Zuno\Http\Response)
  */
-function response(): Response
+function response($content = null, $status = 200, array $headers = [])
 {
-    return app(Response::class);
+    $factory = app(ResponseFactory::class);
+
+    if (func_num_args() === 0) {
+        return $factory;
+    }
+
+    return $factory->make($content ?? '', $status, $headers);
 }
 
 /**
@@ -85,15 +96,20 @@ function response(): Response
  *
  * @param string $view The name of the view file to render.
  * @param array $data An associative array of data to pass to the view (default is an empty array).
- * @return mixed The rendered view output.
+ * @return Response
  */
-function view($view, $data = []): Response
+function view($view, array $data = [], array $headers = []): Response
 {
     $instance = app(Controller::class);
-
     $content = $instance->render($view, $data, true);
+    $response = app(Response::class);
+    $response->setBody($content);
 
-    return new Response($content);
+    foreach ($headers as $name => $value) {
+        request()->headers->set($name, $value);
+    }
+
+    return $response;
 }
 
 /**
@@ -101,19 +117,44 @@ function view($view, $data = []): Response
  *
  * @return RedirectResponse A new instance of the RedirectResponse class.
  */
-function redirect(): RedirectResponse
+function redirect($to = null, $status = 302, $headers = [], $secure = null)
 {
-    return app(RedirectResponse::class);
+    if (is_null($to)) {
+        return app('redirect');
+    }
+
+    return app('redirect')->to($to, $status, $headers, $secure);
 }
 
 /**
- * Creates a new redirect instance for handling HTTP redirects.
+ * Create a new redirect response to the previous location.
  *
- * @return Session A new instance of the Redirect class.
+ * @param  int  $status
+ * @param  array  $headers
+ * @param  mixed  $fallback
+ * @return \Zuno\Http\RedirectResponse
  */
-function session(): Session
+function back($status = 302, $headers = [], $fallback = false)
 {
-    return app(Session::class);
+    return app('redirect')->back($status, $headers, $fallback);
+}
+
+/**
+ * Creates a new Session instance
+ *
+ * @return Session
+ */
+function session($key = null, $default = null)
+{
+    if (is_null($key)) {
+        return app('session');
+    }
+
+    if (is_array($key)) {
+        return app('session')->put($key);
+    }
+
+    return app('session')->get($key, $default);
 }
 
 /**
@@ -123,17 +164,17 @@ function session(): Session
  */
 function csrf_token(): ?string
 {
-    return $_SESSION['_token'];
+    return $_SESSION['_token'] ?? null;
 }
 
 /**
  * Creates a password hashing helper
- *
+ * @param string $plainText
  * @return string
  */
-function bcrypt(string $value): string
+function bcrypt(string $plainText): string
 {
-    return Hash::make($value);
+    return Hash::make($plainText);
 }
 
 /**
@@ -144,7 +185,7 @@ function bcrypt(string $value): string
  */
 function old($key): ?string
 {
-    return Input::old($key);
+    return MessageBag::old($key);
 }
 
 /**
@@ -184,9 +225,9 @@ function route(string $name, mixed $params = []): ?string
  */
 function config(string $key, ?string $default = null): null|string|array
 {
-    if (app()->runningInConsole()) {
-        return Config::get($key) ?? $default;
-    }
+    // if (app()->runningInConsole()) {
+    //     return Config::get($key) ?? $default;
+    // }
 
     return Config::get($key) ?? $default;
 }
@@ -229,10 +270,6 @@ function flash(): FlashMessage
  */
 function base_path(string $path = ''): string
 {
-    if (app()->runningInConsole()) {
-        return realpath(__DIR__ . '/../../../../../../') . ($path ? DIRECTORY_SEPARATOR . $path : '');
-    }
-
     return BASE_PATH . ($path ? DIRECTORY_SEPARATOR . $path : '');
 }
 
@@ -264,7 +301,7 @@ function base_url(string $path = ''): string
  */
 function storage_path(string $path = ''): string
 {
-    return app()->storagePath() . '/' . $path;
+    return app()->storagePath($path);
 }
 
 /**
@@ -275,7 +312,7 @@ function storage_path(string $path = ''): string
  */
 function public_path(string $path = ''): string
 {
-    return app()->publicPath($path) . '/' . $path;;
+    return app()->publicPath($path);
 }
 
 /**
@@ -286,7 +323,29 @@ function public_path(string $path = ''): string
  */
 function resource_path(string $path = ''): string
 {
-    return app()->resourcesPath($path) . '/' . $path;;
+    return app()->resourcesPath($path);
+}
+
+/**
+ * Get the config path of the application.
+ *
+ * @param string $path An optional path to append to the config path.
+ * @return string The full config path.
+ */
+function config_path(string $path = ''): string
+{
+    return app()->configPath($path);
+}
+
+/**
+ * Get the database path of the application.
+ *
+ * @param string $path An optional path to append to the database path.
+ * @return string The full database path.
+ */
+function database_path(string $path = ''): string
+{
+    return app()->databasePath($path);
 }
 
 /**
@@ -298,19 +357,6 @@ function resource_path(string $path = ''): string
 function enqueue(string $path = '', $secure = null): string
 {
     return app('url')->enqueue($path, $secure);
-}
-
-/**
- * Create a new redirect response to the previous location.
- *
- * @param  int  $status
- * @param  array  $headers
- * @param  mixed  $fallback
- * @return \Zuno\Http\RedirectResponse
- */
-function back($status = 302, $headers = [], $fallback = false)
-{
-    return app('redirect')->back($status, $headers, $fallback);
 }
 
 /**
@@ -515,4 +561,40 @@ function critical(mixed $payload): void
 function debug(mixed $payload): void
 {
     Log::debug($payload);
+}
+
+/**
+ * Helper function to create a Ramsey Collection instance.
+ *
+ * @param array $items
+ * @return Collection
+ */
+function collect(array $items = []): Collection
+{
+    return new Collection('mixed', $items);
+}
+
+/**
+ * Delete folder
+ * @param string $folderPath
+ * @return bool
+ */
+function delete_folder_recursively(string $folderPath)
+{
+    if (!is_dir($folderPath)) {
+        return false;
+    }
+
+    $files = array_diff(scandir($folderPath), ['.', '..']);
+    foreach ($files as $file) {
+        $path = $folderPath . DIRECTORY_SEPARATOR . $file;
+
+        if (is_dir($path)) {
+            delete_folder_recursively($path);
+        } else {
+            unlink($path);
+        }
+    }
+
+    return rmdir($folderPath);
 }

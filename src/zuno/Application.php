@@ -12,6 +12,7 @@ use Zuno\Http\Exceptions\HttpException;
 use Zuno\Error\ErrorHandler;
 use Zuno\DI\Container;
 use Zuno\Config\Config;
+use Zuno\ApplicationBuilder;
 
 class Application extends Container
 {
@@ -20,7 +21,7 @@ class Application extends Container
     /**
      * The current version of the Zuno framework.
      */
-    const VERSION = '4.3';
+    const VERSION = '5.4';
 
     protected $basePath;
     protected $hasBeenBootstrapped = false;
@@ -50,12 +51,11 @@ class Application extends Container
     public function __construct()
     {
         parent::setInstance($this);
-        $this->withExceptionHandler();
         $this->bindSingletonClasses();
         Config::initialize();
         $this->registerCoreProviders();
         $this->bootCoreProviders();
-        $this->setNecessaryFolderPath();
+        $this->withExceptionHandler();
         $this->runningInConsole();
     }
 
@@ -65,13 +65,22 @@ class Application extends Container
      * @return \Zuno\ApplicationBuilder
      *   Returns an ApplicationBuilder instance for further configuration.
      */
-    public static function configure()
+    public function configure($app)
     {
-        $app = new static();
-        self::setInstance($app);
+        return (new ApplicationBuilder($app))->withMiddlewareStack();
+    }
 
-        return (new \Zuno\ApplicationBuilder($app))
-            ->withMiddlewareStack();
+    /**
+     * Set the application base path
+     *
+     * @return self
+     */
+    public function setBasePath(string $basePath): self
+    {
+        $this->basePath = $basePath;
+        $this->setNecessaryFolderPath();
+
+        return $this;
     }
 
     /**
@@ -94,10 +103,7 @@ class Application extends Container
     public function registerCoreProviders(): self
     {
         $coreProviders = $this->loadCoreProviders();
-        if ($this->runningInConsole()) {
-            return $this;
-        }
-        $this->registerProviders($coreProviders);
+        $this->registerProviders($coreProviders ?? []);
         $this->registerProviders(config('app.providers'));
 
         return $this;
@@ -114,10 +120,8 @@ class Application extends Container
     public function bootCoreProviders(): self
     {
         $coreProviders = $this->loadCoreProviders();
-        if ($this->runningInConsole()) {
-            return $this;
-        }
-        $this->bootProviders($coreProviders);
+
+        $this->bootProviders($coreProviders ?? []);
         $this->bootProviders(config('app.providers'));
 
         return $this;
@@ -131,7 +135,7 @@ class Application extends Container
      */
     protected function registerProviders(?array $providers = []): void
     {
-        foreach ($providers as $provider) {
+        foreach ($providers ?? [] as $provider) {
             $providerInstance = new $provider($this);
             if ($providerInstance instanceof ServiceProvider) {
                 $providerInstance->register();
@@ -148,7 +152,7 @@ class Application extends Container
      */
     protected function bootProviders(?array $providers = []): void
     {
-        foreach ($providers as $provider) {
+        foreach ($providers ?? [] as $provider) {
             $providerInstance = new $provider($this);
             if ($providerInstance instanceof ServiceProvider && in_array($providerInstance, $this->serviceProviders)) {
                 $providerInstance->boot();
@@ -203,9 +207,9 @@ class Application extends Container
      * @return string
      *   The path to the resources folder.
      */
-    public function resourcesPath(): string
+    public function resourcesPath($path = ''): string
     {
-        return $this->resourcesPath = $this->getPath('resources');
+        return $this->resourcesPath = $this->getPath("resources/{$path}");
     }
 
     /**
@@ -214,9 +218,9 @@ class Application extends Container
      * @return string
      *   The path to the bootstrap folder.
      */
-    public function bootstrapPath(): string
+    public function bootstrapPath($path = ''): string
     {
-        return $this->bootstrapPath = $this->getPath('bootstrap');
+        return $this->bootstrapPath = $this->getPath("bootstrap/{$path}");
     }
 
     /**
@@ -225,9 +229,9 @@ class Application extends Container
      * @return string
      *   The path to the database folder.
      */
-    public function databasePath(): string
+    public function databasePath($path = ''): string
     {
-        return $this->databasePath = $this->getPath('database');
+        return $this->databasePath = $this->getPath("database/{$path}");
     }
 
     /**
@@ -236,9 +240,9 @@ class Application extends Container
      * @return string
      *   The path to the public folder.
      */
-    public function publicPath(): string
+    public function publicPath($path = ''): string
     {
-        return $this->publicPath = $this->getPath('public');
+        return $this->publicPath = $this->getPath("public/{$path}");
     }
 
     /**
@@ -247,9 +251,9 @@ class Application extends Container
      * @return string
      *   The path to the storage folder.
      */
-    public function storagePath(): string
+    public function storagePath($path = ''): string
     {
-        return $this->storagePath = $this->getPath('storage');
+        return $this->storagePath = $this->getPath("storage/{$path}");
     }
 
     /**
@@ -280,9 +284,9 @@ class Application extends Container
      * @return string
      *   The path to the configuration folder.
      */
-    public function configPath(): string
+    public function configPath($path = ''): string
     {
-        return $this->configPath = $this->getPath('config');
+        return $this->configPath = $this->getPath("config/{$path}");
     }
 
     /**
@@ -365,6 +369,7 @@ class Application extends Container
         $this->singleton(Response::class, Response::class);
     }
 
+
     /**
      * Dispatches the application request.
      *
@@ -375,8 +380,9 @@ class Application extends Container
     {
         try {
             $response = app('route')->resolve($this, $request);
+            $response->prepare($request);
 
-            if ($response instanceof \Zuno\Http\Response) {
+            if ($response instanceof Response) {
                 $response->send();
             } else {
                 echo $response;

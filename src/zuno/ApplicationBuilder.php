@@ -49,8 +49,7 @@ class ApplicationBuilder
             }
         }
 
-        $response = $kernel->handle($request, $finalHandler);
-        $response->send();
+        $kernel->handle($request, $finalHandler);
 
         return $this;
     }

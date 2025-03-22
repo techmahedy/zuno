@@ -4,13 +4,15 @@ namespace Zuno\Support;
 
 use Zuno\Middleware\Contracts\Middleware as ContractsMiddleware;
 use Zuno\Http\Validation\FormRequest;
-use Zuno\Http\Validation\Contracts\ValidatesWhenResolved;
 use Zuno\Http\Response;
 use Zuno\Http\Request;
+use Zuno\Http\RedirectResponse;
+use Zuno\Database\Eloquent\Model;
+use Zuno\Database\Eloquent\Builder;
 use Zuno\Application;
 use Ramsey\Collection\Collection;
 use App\Http\Kernel;
-use App\Http\Validations\LoginRequest;
+use Zuno\Support\Facades\Redirect;
 
 class Router extends Kernel
 {
@@ -380,10 +382,8 @@ class Router extends Kernel
     public function resolve(Application $app, Request $request)
     {
         $currentMiddleware = $this->getCurrentRouteMiddleware($request);
+        if ($currentMiddleware) $this->applyRouteMiddleware($currentMiddleware);
 
-        if ($currentMiddleware) {
-            $this->applyRouteMiddleware($currentMiddleware);
-        }
         $callback = $this->getCallback($request);
         if (!$callback) abort(404);
 
@@ -398,16 +398,29 @@ class Router extends Kernel
                 $result = call_user_func($callback, ...array_values($routeParams));
             }
 
-            if (!($result instanceof \Zuno\Http\Response)) {
+            $response = app(Response::class);
+            if (!($result instanceof Response)) {
                 if ($result instanceof Collection) {
-                    $result = $result->toArray();
+                    $result = json_encode($result->toArray());
+                    $response->headers->set('Content-Type', 'application/json');
+                } elseif (is_array($result)) {
+                    $result = json_encode($result);
+                    $response->headers->set('Content-Type', 'application/json');
+                } elseif ($result instanceof Model) {
+                    $result = json_encode($result);
+                    $response->headers->set('Content-Type', 'application/json');
+                } elseif ($result instanceof Builder) {
+                    $result = json_encode($result);
+                    $response->headers->set('Content-Type', 'application/json');
                 }
-                return new \Zuno\Http\Response($result);
+
+                $response->setBody($result);
+
+                return $response;
             }
 
             return $result;
         };
-
         $response = $this->handle($request, $finalHandler);
 
         return $response;
@@ -433,26 +446,20 @@ class Router extends Kernel
             $paramType = $parameter->getType();
 
             if ($paramType) {
-                // If the parameter is a class, resolve it from the Application instance
                 if (class_exists($paramType->getName())) {
                     $resolvedParameters[] = $app->get($paramType->getName());
-                }
-                // If the parameter is a route parameter, use the value from $routeParams
-                elseif (array_key_exists($paramName, $routeParams)) {
+                } elseif (array_key_exists($paramName, $routeParams)) {
                     $resolvedParameters[] = $routeParams[$paramName];
                 }
             } else {
-                // If the parameter is not type-hinted, try to resolve it from $routeParams
                 if (array_key_exists($paramName, $routeParams)) {
                     $resolvedParameters[] = $routeParams[$paramName];
                 } else {
-                    // If the parameter is not found, throw an exception or provide a default value
                     throw new \Exception("Unable to resolve parameter: {$paramName}");
                 }
             }
         }
 
-        // Call the __invoke method with resolved parameters
         $result = $controller->__invoke(...$resolvedParameters);
 
         return $result;

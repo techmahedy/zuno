@@ -4,10 +4,10 @@ namespace Zuno\Http;
 
 use Zuno\Support\Session;
 use Zuno\Support\File;
+use Zuno\Http\Validation\Rule;
 use Zuno\Http\Support\RequestParser;
 use Zuno\Http\Support\RequestHelper;
 use Zuno\Http\ServerBag;
-use Zuno\Http\Rule;
 use Zuno\Http\ParameterBag;
 use Zuno\Http\InputBag;
 use Zuno\Http\HeaderBag;
@@ -87,6 +87,11 @@ class Request
     protected ?string $baseUrl = null;
     protected ?string $method = null;
     protected string $defaultLocale = "en";
+    protected ?string $format = null;
+    protected static ?array $formats = null;
+    protected ?array $languages = null;
+    protected ?array $charsets = null;
+    protected ?array $encodings = null;
 
     /**
      * Constructor: Initializes request data from PHP superglobals.
@@ -105,6 +110,10 @@ class Request
         $this->baseUrl = base_url();
         $this->method = $this->method();
         $this->session = new Session($_SESSION);
+        $this->format = null;
+        $this->languages = null;
+        $this->charsets = null;
+        $this->encodings = null;
     }
 
     /**
@@ -523,5 +532,73 @@ class Request
     public static function capture()
     {
         return app(Request::class);
+    }
+
+    /**
+     * Gets the request format.
+     *
+     * Here is the process to determine the format:
+     *
+     *  * format defined by the user (with setRequestFormat())
+     *  * _format request attribute
+     *  * $default
+     *
+     * @see getPreferredFormat
+     */
+    public function getRequestFormat(?string $default = 'html'): ?string
+    {
+        $this->format ??= $this->attributes->get('_format');
+
+        return $this->format ?? $default;
+    }
+
+    /**
+     * Gets the mime type associated with the format.
+     */
+    public function getMimeType(string $format): ?string
+    {
+        if (null === static::$formats) {
+            static::initializeFormats();
+        }
+
+        return isset(static::$formats[$format]) ? static::$formats[$format][0] : null;
+    }
+
+    /**
+     * Initializes HTTP request formats.
+     */
+    protected static function initializeFormats(): void
+    {
+        static::$formats = [
+            'html' => ['text/html', 'application/xhtml+xml'],
+            'txt' => ['text/plain'],
+            'js' => ['application/javascript', 'application/x-javascript', 'text/javascript'],
+            'css' => ['text/css'],
+            'json' => ['application/json', 'application/x-json'],
+            'jsonld' => ['application/ld+json'],
+            'xml' => ['text/xml', 'application/xml', 'application/x-xml'],
+            'rdf' => ['application/rdf+xml'],
+            'atom' => ['application/atom+xml'],
+            'rss' => ['application/rss+xml'],
+            'form' => ['application/x-www-form-urlencoded', 'multipart/form-data'],
+        ];
+    }
+
+    /**
+     * Checks whether the method is cacheable or not.
+     *
+     * @see https://tools.ietf.org/html/rfc7231#section-4.2.3
+     */
+    public function isMethodCacheable(): bool
+    {
+        return \in_array($this->getMethod(), ['GET', 'HEAD']);
+    }
+
+    /**
+     * Gets the Etags.
+     */
+    public function getETags(): array
+    {
+        return preg_split('/\s*,\s*/', $this->headers->get('If-None-Match', ''), -1, \PREG_SPLIT_NO_EMPTY);
     }
 }

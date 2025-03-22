@@ -25,20 +25,7 @@ class Session
      */
     public function __construct(?array &$data = [])
     {
-        $this->startSession();
         $this->data = &$_SESSION;
-    }
-
-    /**
-     * Start the session if it hasn't already been started.
-     *
-     * @return void
-     */
-    protected function startSession(): void
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
     }
 
     /**
@@ -50,7 +37,13 @@ class Session
      */
     public function get(string $key, $default = null)
     {
-        return $this->data[$key] ?? $default;
+        $value = $this->data[$key] ?? $default;
+        $keys = ['success', 'info', 'errors', 'danger', 'warning', 'primary', 'message', 'input'];
+        if (in_array($key, $keys)) {
+            $this->forget($key);
+        }
+
+        return $value;
     }
 
     /**
@@ -169,21 +162,7 @@ class Session
      */
     public function flash(string $key, $value): void
     {
-        $this->put($this->flashKey . '.' . $key, $value);
-    }
-
-    /**
-     * Get a flash message.
-     *
-     * @param string $key
-     * @param mixed $default
-     * @return mixed
-     */
-    public function getFlash(string $key, $default = null)
-    {
-        $value = $this->get($this->flashKey . '.' . $key, $default);
-        $this->forget($this->flashKey . '.' . $key);
-        return $value;
+        $this->put($key, $value);
     }
 
     /**

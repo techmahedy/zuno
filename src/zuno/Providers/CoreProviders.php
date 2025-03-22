@@ -17,9 +17,9 @@ trait CoreProviders
     protected function loadCoreProviders()
     {
         return [
+            \Zuno\Providers\FacadeServiceProvider::class,
             \Zuno\Providers\EnvServiceProvider::class,
             \Zuno\Providers\SessionServiceProvider::class,
-            \Zuno\Providers\FacadeServiceProvider::class,
             \Zuno\Providers\RouteServiceProvider::class,
         ];
     }

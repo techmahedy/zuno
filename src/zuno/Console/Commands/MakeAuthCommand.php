@@ -193,15 +193,12 @@ class LoginController extends Controller
 
         if (\$user) {
             if (Auth::try(\$request->passed())) {
-                flash()->message('success', 'You are logged in');
-                return redirect()->to('/home');
+                return redirect('/home')->withFlash('success', 'You are logged in');
             }
-            flash()->message('error', 'Email or password is incorrect');
-            return redirect()->back();
+            return back()->withFlash('error', 'Email or password is incorrect');
         }
 
-        flash()->message('error', 'User does not exist');
-        return redirect()->back();
+        return back()->withFlash('error', 'User does not exist');
     }
 
     public function logout()
@@ -236,7 +233,7 @@ class RegisterController extends Controller
     public function register(Request \$request)
     {
         \$request->sanitize([
-            'name' => 'required|min:2|max:20'
+            'name' => 'required|min:2|max:20',
             'email' => 'required|email|unique:users|min:2|max:100',
             'password' => 'required|min:2|max:20',
         ]);
@@ -288,11 +285,14 @@ EOT;
             <h5 class="mb-0">Login</h5>
         </div>
         <div class="card-body">
+            @hasflash
+                {!! flash()->display() !!}
+            @endhasflash
             <form action="{{ route('login') }}" method="POST">
                 @csrf
                 <div class="mb-3">
                     <label for="email" class="form-label">Email address</label>
-                    <input type="email" class="form-control" name="email" required>
+                    <input type="email" class="form-control" name="email" required value="{{ old('name') }}">
                 </div>
                 <div class="mb-3">
                     <label for="password" class="form-label">Password</label>
@@ -317,19 +317,18 @@ EOT;
             <h5 class="mb-0">Register</h5>
         </div>
         <div class="card-body">
+            @hasflash
+                {!! flash()->display() !!}
+            @endhasflash
             <form action="{{ route('register.create') }}" method="POST">
                 @csrf
                 <div class="mb-3">
-                    <label for="username" class="form-label">Username</label>
-                    <input type="text" class="form-control" name="username" required>
-                </div>
-                <div class="mb-3">
                     <label for="name" class="form-label">Name</label>
-                    <input type="text" class="form-control" name="name" required>
+                    <input type="text" class="form-control" name="name" required value="{{ old('name') }}">
                 </div>
                 <div class="mb-3">
                     <label for="email" class="form-label">Email</label>
-                    <input type="email" class="form-control" name="email" required>
+                    <input type="email" class="form-control" name="email" required value="{{ old('email') }}">
                 </div>
                 <div class="mb-3">
                     <label for="password" class="form-label">Password</label>

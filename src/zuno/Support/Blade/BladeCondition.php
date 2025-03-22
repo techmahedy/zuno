@@ -496,7 +496,7 @@ trait BladeCondition
      */
     protected function compileCsrf()
     {
-        $token = request()->session()->token();
+        $token = csrf_token();
 
         return '<input type="hidden" name="_token" value="' . htmlspecialchars($token, ENT_QUOTES, 'UTF-8') . '">' . "\n";
     }

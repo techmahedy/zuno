@@ -67,4 +67,24 @@ interface HttpStatus
     public const HTTP_LOOP_DETECTED = 508;
     public const HTTP_NOT_EXTENDED = 510;
     public const HTTP_NETWORK_AUTHENTICATION_REQUIRED = 511;
+
+    /**
+     * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control
+     */
+    public const HTTP_RESPONSE_CACHE_CONTROL_DIRECTIVES = [
+        'must_revalidate' => false,
+        'no_cache' => false,
+        'no_store' => false,
+        'no_transform' => false,
+        'public' => false,
+        'private' => false,
+        'proxy_revalidate' => false,
+        'max_age' => true,
+        's_maxage' => true,
+        'stale_if_error' => true,         // RFC5861
+        'stale_while_revalidate' => true, // RFC5861
+        'immutable' => false,
+        'last_modified' => true,
+        'etag' => true,
+    ];
 }

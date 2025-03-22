@@ -2,6 +2,8 @@
 
 namespace Zuno\Session;
 
+use Zuno\Session\MessageBag;
+
 class FlashMessage
 {
     /**
@@ -40,6 +42,17 @@ class FlashMessage
     }
 
     /**
+     * Unset all flash messages
+     * @return void
+     */
+    public static function unsetFlashMessage(): void
+    {
+        unset($_SESSION['flash_messages']);
+        unset($_SESSION['peek_messages']);
+        unset($_SESSION['errors']);
+    }
+
+    /**
      * Display flash messages as snackbars, with different colors per type.
      *
      * @return string HTML output of snackbars.
@@ -65,7 +78,7 @@ class FlashMessage
                     . '</div>';
 
                 if ($message['type'] === 'success') {
-                    Input::clear();
+                    MessageBag::clear();
                 }
             } elseif (is_string($message)) {
                 // Handle plain string messages as error alerts

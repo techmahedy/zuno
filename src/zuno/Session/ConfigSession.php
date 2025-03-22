@@ -3,6 +3,7 @@
 namespace Zuno\Session;
 
 use Zuno\Config\Config;
+use Zuno\Http\Response\Cookie;
 
 class ConfigSession
 {
@@ -14,6 +15,7 @@ class ConfigSession
         if (php_sapi_name() === 'cli' || defined('STDIN')) {
             return;
         }
+
         $sessionLifetime = (int) $sessionConfig['lifetime'];
         $sessionPath = $sessionConfig['path'];
         $sessionDomain = $sessionConfig['domain'];
@@ -49,22 +51,28 @@ class ConfigSession
             throw new \Exception("Unsupported session driver: " . $sessionDriver);
         }
 
-        // Set session lifetime and cookie parameters
-        ini_set('session.gc_maxlifetime', $sessionLifetime * 60);
-        ini_set('session.cookie_lifetime', $sessionExpireOnClose ? 0 : $sessionLifetime * 60);
+        // Set session cookie using the Cookie class
+        $cookie = new Cookie(
+            $sessionCookieName,
+            '', // Value will be set by PHP
+            $sessionExpireOnClose ? 0 : $sessionLifetime * 60,
+            $sessionPath,
+            $sessionDomain,
+            $sessionSecureCookie,
+            $sessionHttpOnly,
+            false, // raw
+            $sessionSameSite
+        );
 
-        session_name($sessionCookieName); // Set session cookie name.
-
-        $cookieParams = [
-            'lifetime' => $sessionExpireOnClose ? 0 : $sessionLifetime * 60,
-            'path' => $sessionPath,
-            'domain' => $sessionDomain,
-            'secure' => $sessionSecureCookie,
-            'httponly' => $sessionHttpOnly,
-            'samesite' => $sessionSameSite
-        ];
-
-        session_set_cookie_params($cookieParams);
+        // Set session cookie parameters
+        session_set_cookie_params([
+            'lifetime' => $cookie->getExpiresTime(),
+            'path' => $cookie->getPath(),
+            'domain' => $cookie->getDomain(),
+            'secure' => $cookie->isSecure(),
+            'httponly' => $cookie->isHttpOnly(),
+            'samesite' => $cookie->getSameSite(),
+        ]);
 
         // Start session with error handling
         if (session_status() === PHP_SESSION_NONE && !session_start()) {
@@ -73,11 +81,10 @@ class ConfigSession
 
         // Regenerate after lifetime expires.
         if (isset($_SESSION['last_regenerated']) && (time() - $_SESSION['last_regenerated']) > ($sessionLifetime * 60)) {
-            $oldToken = $_SESSION['_token'] ?? bin2hex(openssl_random_pseudo_bytes(16));
             self::regenerateSession();
-            $_SESSION['_token'] = $oldToken;
+            $_SESSION['_token'] = bin2hex(openssl_random_pseudo_bytes(16));
             $_SESSION['last_regenerated'] = time();
-        } else if (!isset($_SESSION['last_regenerated'])) {
+        } elseif (!isset($_SESSION['last_regenerated'])) {
             $_SESSION['_token'] = bin2hex(openssl_random_pseudo_bytes(16));
             $_SESSION['last_regenerated'] = time();
         }
@@ -133,20 +140,61 @@ class ConfigSession
 
     public static function cookieWrite($sessionId, $sessionData): bool
     {
-        setcookie(session_name(), self::encryptCookie($sessionData), [
-            'expires' => session_get_cookie_params()['lifetime'] ? time() + session_get_cookie_params()['lifetime'] : 0,
-            'path' => session_get_cookie_params()['path'],
-            'domain' => session_get_cookie_params()['domain'],
-            'secure' => session_get_cookie_params()['secure'],
-            'httponly' => session_get_cookie_params()['httponly'],
-            'samesite' => session_get_cookie_params()['samesite'],
-        ]);
+        $cookie = new Cookie(
+            session_name(),
+            self::encryptCookie($sessionData),
+            session_get_cookie_params()['lifetime'] ? time() + session_get_cookie_params()['lifetime'] : 0,
+            session_get_cookie_params()['path'],
+            session_get_cookie_params()['domain'],
+            session_get_cookie_params()['secure'],
+            session_get_cookie_params()['httponly'],
+            false, // raw
+            session_get_cookie_params()['samesite']
+        );
+
+        setcookie(
+            $cookie->getName(),
+            $cookie->getValue(),
+            [
+                'expires' => $cookie->getExpiresTime(),
+                'path' => $cookie->getPath(),
+                'domain' => $cookie->getDomain(),
+                'secure' => $cookie->isSecure(),
+                'httponly' => $cookie->isHttpOnly(),
+                'samesite' => $cookie->getSameSite(),
+            ]
+        );
+
         return true;
     }
 
     public static function cookieDestroy($sessionId): bool
     {
-        setcookie(session_name(), '', ['expires' => time() - 3600]);
+        $cookie = new Cookie(
+            session_name(),
+            '',
+            time() - 3600,
+            session_get_cookie_params()['path'],
+            session_get_cookie_params()['domain'],
+            session_get_cookie_params()['secure'],
+            session_get_cookie_params()['httponly'],
+            false, // raw
+            session_get_cookie_params()['samesite']
+        );
+
+        setcookie(
+            $cookie->getName(),
+            $cookie->getValue(),
+            [
+                'expires' => $cookie->getExpiresTime(),
+                'path' => $cookie->getPath(),
+                'domain' => $cookie->getDomain(),
+                'secure' => $cookie->isSecure(),
+                'httponly' => $cookie->isHttpOnly(),
+                'samesite' => $cookie->getSameSite(),
+            ]
+        );
+
         return true;
     }
 

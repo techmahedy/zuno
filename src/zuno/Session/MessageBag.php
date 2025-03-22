@@ -2,7 +2,7 @@
 
 namespace Zuno\Session;
 
-class Input
+class MessageBag
 {
     /**
      * Set a value in the session.
@@ -26,7 +26,7 @@ class Input
      */
     public static function flashInput()
     {
-        $_SESSION['input'] = $_POST + $_GET;
+        $_SESSION['input_errors'] = $_POST + $_GET;
     }
 
     /**
@@ -47,7 +47,9 @@ class Input
         $input = $_SESSION['input'] ?? null;
 
         if ($key) {
-            return $input[$key] ?? null;
+            $oldInput = $input[$key] ?? null;
+
+            return $oldInput;
         }
 
         return $input;

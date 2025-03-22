@@ -14,13 +14,30 @@ class ErrorHandler
             $errorFile = $exception->getFile();
             $errorLine = $exception->getLine();
             $errorTrace = $exception->getTraceAsString();
+            $errorCode = $exception->getCode();
 
-            if ($exception instanceof HttpResponseException) {
-                $validationErrors = $exception->getValidationErrors();
-                $statusCode = $exception->getStatusCode();
-
-                self::sendJsonErrorResponse($errorMessage, $errorFile, $errorLine, $errorTrace, $statusCode, $validationErrors);
-                return;
+            if (request()->isAjax()) {
+                if ($exception instanceof HttpResponseException) {
+                    $responseErrors = $exception->getValidationErrors();
+                    $statusCode = $exception->getStatusCode();
+                    self::sendJsonErrorResponse(
+                        $errorFile,
+                        $errorLine,
+                        $errorTrace,
+                        $statusCode,
+                        $responseErrors
+                    );
+                    return;
+                } else {
+                    self::sendJsonErrorResponse(
+                        $errorFile,
+                        $errorLine,
+                        $errorTrace,
+                        $errorCode,
+                        $errorMessage
+                    );
+                    return;
+                }
             }
 
             if (env('APP_DEBUG') === "true") {
@@ -64,20 +81,18 @@ class ErrorHandler
     /**
      * Send a JSON error response for AJAX requests.
      *
-     * @param string $errorMessage
      * @param string $errorFile
      * @param int $errorLine
      * @param string $errorTrace
      * @param int $statusCode
-     * @param array|null $validationErrors
+     * @param array|null $responseErrors
      */
     public static function sendJsonErrorResponse(
-        string $errorMessage,
         string $errorFile,
         int $errorLine,
         string $errorTrace,
         int $statusCode,
-        mixed $validationErrors = null
+        mixed $errorMessage = null
     ): void {
         $response = [
             'success' => false,
@@ -88,10 +103,6 @@ class ErrorHandler
                 'trace' => $errorTrace,
             ],
         ];
-
-        if ($validationErrors) {
-            $response['errors'] = $validationErrors;
-        }
 
         header('Content-Type: application/json');
         http_response_code($statusCode);

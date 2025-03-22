@@ -1,8 +1,8 @@
 <?php
 
-namespace Zuno\Http;
+namespace Zuno\Http\Validation;
 
-use Zuno\Session\Input;
+use Zuno\Session\MessageBag;
 use Zuno\Http\Support\ValidationRules;
 use Zuno\Http\Response;
 use Zuno\Http\Exceptions\HttpResponseException;
@@ -22,7 +22,7 @@ trait Rule
     {
         $errors = [];
         $input = $this->all();
-        Input::flashInput();
+        MessageBag::flashInput();
 
         if (is_array($input)) {
             foreach ($rules as $fieldName => $value) {
@@ -41,7 +41,6 @@ trait Rule
         if (!empty($errors)) {
             if (request()->isAjax()) {
                 throw new HttpResponseException(
-                    response()->json(['errors' => $errors]),
                     $errors,
                     Response::HTTP_UNPROCESSABLE_ENTITY
                 );
