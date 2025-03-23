@@ -9,13 +9,13 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class CreateSeedCommand extends Command
 {
-    protected static $defaultName = 'create:seed';
+    protected static $defaultName = 'make:seed';
 
     protected function configure()
     {
         $this
-            ->setName('create:seed')
-            ->setDescription('Creates a new Phinx seed class.')
+            ->setName('make:seed')
+            ->setDescription('Creates a new seed class.')
             ->addArgument('name', InputArgument::REQUIRED, 'The name of the seed class.');
     }
 

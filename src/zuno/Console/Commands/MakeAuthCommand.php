@@ -32,6 +32,7 @@ class MakeAuthCommand extends Command
         foreach ([$controllersPath, $viewsPath, $layoutsPath, $homePath] as $path) {
             if (!is_dir($path)) mkdir($path, 0755, true);
         }
+        @unlink(base_path('resources/views/welcome.blade.php'));
         // Generate controllers
         $this->createFile($controllersPath . "LoginController.php", $this->getLoginController());
         $this->createFile($controllersPath . "RegisterController.php", $this->getRegisterController());
@@ -42,6 +43,7 @@ class MakeAuthCommand extends Command
         $this->createFile($viewsPath . "register.blade.php", $this->getRegisterView());
         $this->createFile($layoutsPath . "app.blade.php", $this->getAppLayout());
         $this->createFile($homePath . "home.blade.php", $this->getHomeView());
+        $this->createFile($homePath . "welcome.blade.php", $this->getWelcomeView());
 
         // Append routes
         $this->appendRoutes($routesPath);
@@ -63,11 +65,9 @@ class MakeAuthCommand extends Command
 
 // Auth Routes
 Route::get('/home', [\App\Http\Controllers\HomeController::class, 'home'])->name('dashboard')->middleware('auth');
-
 Route::get('/login', [\App\Http\Controllers\Auth\LoginController::class, 'index'])->name('login')->middleware('guest');
 Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login'])->middleware('guest');
 Route::post('/logout', [\App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout')->middleware('auth');
-
 Route::get('/register', [\App\Http\Controllers\Auth\RegisterController::class, 'index'])->name('register')->middleware('guest');
 Route::post('/user/register', [\App\Http\Controllers\Auth\RegisterController::class, 'register'])->name('register.create')->middleware('guest');
 
@@ -83,32 +83,43 @@ EOT;
         return <<<EOT
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title')</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-</head>
-<body>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>@yield('title')</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+            integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+        <style>
+            body {
+                font-family: 'Poppins', sans-serif;
+                background: #f8f9fa;
+            }
 
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{{ route('home') }}">Zuno</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+            .navbar {
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            }
+        </style>
+    </head>
+    <body>
+        <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
+            <div class="container">
+                <a class="navbar-brand" href="{{ route('home') }}">
+                    <img src="https://laravel.com/img/logomark.min.svg" alt="Laravel Logo" width="40"
+                        height="40">
+                </a>
+                <div class="d-flex align-items-center gap-3">
                     @guest
-                        <li class="nav-item"><a class="nav-link text-white me-3" href="{{ route('login') }}">Sign In</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="{{ route('register') }}">Register</a></li>
+                        <a href="{{ route('login') }}" class="btn btn-light-custom">Login</a>
+                        <a href="{{ route('register') }}" class="btn btn-light-custom">Register</a>
                     @else
-                        <li class="nav-item"><a class="nav-link text-white me-3" href="{{ route('dashboard') }}">Home</a></li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-white" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                        <a href="{{ route('dashboard') }}" class="btn btn-light-custom">Home</a>
+                        <div class="dropdown">
+                            <button class="btn btn-light-custom dropdown-toggle" type="button" id="dropdownMenuButton"
+                                data-bs-toggle="dropdown" aria-expanded="false">
                                 {{ Zuno\Support\Facades\Auth::user()->name }}
-                            </a>
+                            </button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li>
                                     <form action="{{ route('logout') }}" method="POST">@csrf
@@ -116,29 +127,51 @@ EOT;
                                     </form>
                                 </li>
                             </ul>
-                        </li>
+                        </div>
                     @endguest
-                </ul>
+                </div>
+            </div>
+        </nav>
+        <div class="container mt-5 pt-5">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    @if (session()->has('success'))
+                        <div class="alert alert-success">
+                            {{ session()->get('success') }}
+                        </div>
+                    @elseif(session()->has('error'))
+                        <div class="alert alert-danger">
+                            {{ session()->get('error') }}
+                        </div>
+                    @endif
+                    @yield('content')
+                </div>
             </div>
         </div>
-    </nav>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous">
+        </script>
+    </body>
+</html>
+EOT;
+    }
 
-    <!-- Page Content -->
-    <div class="container mt-4">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                @yield('content')
+    private function getWelcomeView(): string
+    {
+        return <<<EOT
+@extends('layouts.app')
+@section('title') Welcome
+@section('content')
+    <div class="container d-flex justify-content-center align-items-center" style="height: 65vh;">
+        <div class="content text-center">
+            <p>Thank you for choosing Zuno {{ \Zuno\Application::VERSION }}. Build something amazing!</p>
+            <div class="buttons">
+                <a href="https://github.com/techmahedy/zunoo" class="btn btn-light">Github</a>
+                <a href="https://github.com/techmahedy/zunoo" class="btn btn-light">Documentation</a>
             </div>
         </div>
     </div>
-
-    <!-- Footer -->
-    <footer class="text-center mt-4"><p>&copy; {{ date('Y') }} All rights reserved.</p></footer>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+@endsection
 EOT;
     }
 
@@ -149,8 +182,8 @@ EOT;
 @section('title') Dashboard
 @section('content')
     <div class="card shadow-lg mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Dashboard</h5>
+        <div class="card-header bg-white text-black fw-bold">
+            <h5 class="fw-bold fs-5">Dashboard</h5>
         </div>
         <div class="card-body">
             <p class="fw-bold fs-5">
@@ -174,6 +207,7 @@ use Zuno\Http\Request;
 use Zuno\Support\Facades\Auth;
 use App\Models\User;
 use App\Http\Controllers\Controller;
+use Zuno\Http\Response\RedirectResponse;
 
 class LoginController extends Controller
 {
@@ -182,7 +216,7 @@ class LoginController extends Controller
         return view('auth.login');
     }
 
-    public function login(Request \$request)
+    public function login(Request \$request): RedirectResponse
     {
         \$request->sanitize([
             'email' => 'required|email|min:2|max:100',
@@ -193,19 +227,20 @@ class LoginController extends Controller
 
         if (\$user) {
             if (Auth::try(\$request->passed())) {
-                return redirect('/home')->withFlash('success', 'You are logged in');
+                return redirect('/home')->with('success', 'You are logged in');
             }
-            return back()->withFlash('error', 'Email or password is incorrect');
+            return back()->with('error', 'Email or password is incorrect');
         }
 
-        return back()->withFlash('error', 'User does not exist');
+        return back()->with('error', 'User does not exist');
     }
 
     public function logout()
     {
         Auth::logout();
-        flash()->message('success', 'You are successfully logged out');
-        return redirect()->to('/login');
+
+        return redirect()->to('/login')
+            ->with('success', 'You are successfully logged out');
     }
 }
 EOT;
@@ -220,8 +255,9 @@ namespace App\Http\Controllers\Auth;
 
 use Zuno\Http\Request;
 use Zuno\Support\Facades\Hash;
-use App\Http\Controllers\Controller;
+use Zuno\Http\Response\RedirectResponse;
 use App\Models\User;
+use App\Http\Controllers\Controller;
 
 class RegisterController extends Controller
 {
@@ -230,7 +266,7 @@ class RegisterController extends Controller
         return view('auth.register');
     }
 
-    public function register(Request \$request)
+    public function register(Request \$request): RedirectResponse
     {
         \$request->sanitize([
             'name' => 'required|min:2|max:20',
@@ -245,8 +281,8 @@ class RegisterController extends Controller
         ]);
 
         if (\$user) {
-            flash()->message('success', 'User created successfully');
-            return redirect()->to('/login');
+            return redirect()->to('/login')
+                ->with('success', 'User created successfully');
         }
 
         return redirect()->back();
@@ -280,26 +316,30 @@ EOT;
 @extends('layouts.app')
 @section('title') Login
 @section('content')
-    <div class="card shadow-lg mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Login</h5>
-        </div>
+    <div class="card-header bg-white border-bottom-0 text-center mt-5">
+        <h5 class="fw-bold fs-5">Login</h5>
+    </div>
+    <div class="card mx-auto mt-5" style="max-width: 400px;">
         <div class="card-body">
-            @hasflash
-                {!! flash()->display() !!}
-            @endhasflash
             <form action="{{ route('login') }}" method="POST">
                 @csrf
                 <div class="mb-3">
-                    <label for="email" class="form-label">Email address</label>
-                    <input type="email" class="form-control" name="email" required value="{{ old('name') }}">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" name="email" value="{{ old('email') }}">
                 </div>
                 <div class="mb-3">
                     <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" name="password" required>
+                    <input type="password" class="form-control" name="password" value="">
                 </div>
-                <button type="submit" class="btn btn-primary btn-lg">Login</button>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                    <label class="form-check-label" for="remember">Remember Me</label>
+                </div>
+                <button type="submit" class="btn btn-secondary w-100">Sign in</button>
             </form>
+            <div class="text-center mt-3">
+                Don't have an account? <a href="{{ route('register') }}" class="text-decoration-none">Register.</a>
+            </div>
         </div>
     </div>
 @endsection
@@ -312,30 +352,30 @@ EOT;
 @extends('layouts.app')
 @section('title') Register
 @section('content')
-    <div class="card shadow-lg mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Register</h5>
-        </div>
+    <div class="card-header bg-white border-bottom-0 text-center mt-5">
+        <h5 class="fw-bold fs-5">Register</h5>
+    </div>
+    <div class="card mx-auto mt-5" style="max-width: 400px;">
         <div class="card-body">
-            @hasflash
-                {!! flash()->display() !!}
-            @endhasflash
             <form action="{{ route('register.create') }}" method="POST">
                 @csrf
                 <div class="mb-3">
                     <label for="name" class="form-label">Name</label>
-                    <input type="text" class="form-control" name="name" required value="{{ old('name') }}">
+                    <input type="text" class="form-control" name="name" value="{{ old('name') }}">
                 </div>
                 <div class="mb-3">
                     <label for="email" class="form-label">Email</label>
-                    <input type="email" class="form-control" name="email" required value="{{ old('email') }}">
+                    <input type="email" class="form-control" name="email" value="{{ old('email') }}">
                 </div>
                 <div class="mb-3">
                     <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" name="password" required>
+                    <input type="password" class="form-control" name="password" value="">
                 </div>
-                <button type="submit" class="btn btn-primary btn-lg">Register</button>
+                <button type="submit" class="btn btn-secondary w-100">Register</button>
             </form>
+            <div class="text-center mt-3">
+                Already have an account? <a href="{{ route('login') }}" class="text-decoration-none">Login.</a>
+            </div>
         </div>
     </div>
 @endsection

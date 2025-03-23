@@ -4,7 +4,6 @@ namespace Zuno\Http\Response;
 
 use Zuno\Support\Router;
 use Zuno\Session\MessageBag;
-use Zuno\Session\FlashMessage;
 use Zuno\Http\Response;
 
 class RedirectResponse extends Response
@@ -40,7 +39,6 @@ class RedirectResponse extends Response
         $this->headers->set('Location', $url);
         $this->headers->set('Content-Type', 'text/html; charset=utf-8');
         if ($this->isSuccessful()) {
-            FlashMessage::unsetFlashMessage();
             MessageBag::clear();
         }
 
@@ -226,9 +224,9 @@ class RedirectResponse extends Response
      * @param string $message
      * @return RedirectResponse
      */
-    public function withFlash(string $type, string $message): RedirectResponse
+    public function with(string $type, string $message): RedirectResponse
     {
-        flash()->message($type, $message);
+        session()->put($type, $message);
 
         return $this;
     }

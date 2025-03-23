@@ -8,7 +8,6 @@ use Zuno\Support\Facades\Auth;
 use Zuno\Support\Facades\Abort;
 use Zuno\Support\Collection;
 use Zuno\Session\MessageBag;
-use Zuno\Session\FlashMessage;
 use Zuno\Http\Response\RedirectResponse;
 use Zuno\Http\ResponseFactory;
 use Zuno\Http\Response;
@@ -208,12 +207,7 @@ function fake(): \Faker\Generator
  */
 function route(string $name, mixed $params = []): ?string
 {
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $basePath = rtrim($scheme . '://' . $host, '/');
-    $routePath = app('route')->route($name, $params);
-
-    return $routePath ? $basePath . '/' . ltrim($routePath, '/') : null;
+    return app('url')->route($name, $params);
 }
 
 /**
@@ -250,16 +244,6 @@ function isAuthenticated(): bool
 function paginator($data): Paginator
 {
     return new Paginator($data);
-}
-
-/**
- * Create a new flash message instance.
- *
- * @return FlashMessage Returns a new FlashMessage object.
- */
-function flash(): FlashMessage
-{
-    return app(FlashMessage::class);
 }
 
 /**

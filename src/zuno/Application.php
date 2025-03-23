@@ -21,7 +21,7 @@ class Application extends Container
     /**
      * The current version of the Zuno framework.
      */
-    const VERSION = '5.4';
+    const VERSION = '5.5';
 
     protected $basePath;
     protected $hasBeenBootstrapped = false;
@@ -390,9 +390,8 @@ class Application extends Container
         } catch (HttpException $exception) {
             if ($request->isAjax()) {
                 throw new HttpResponseException(
-                    response()->json(['errors' => $exception->getMessage()]),
                     $exception->getMessage(),
-                    $exception->getStatusCode()
+                    $exception->getCode()
                 );
             }
 

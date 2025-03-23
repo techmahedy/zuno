@@ -48,7 +48,7 @@ trait Rule
 
             $this->setErrors($errors);
             foreach ($errors as $key => $error) {
-                flash()->set($key, implode(',', (array)$error));
+                session()->putPeek($key, implode(' ', (array)$error));
             }
 
             redirect()->back()->withInput()->withErrors($errors)->send();

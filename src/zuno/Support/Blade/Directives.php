@@ -37,12 +37,12 @@ trait Directives
         return "<?php endif; ?>";
     }
 
-    public function compileHasflash()
+    public function compileErrors()
     {
-        return "<?php if(flash()->hasMessages()): ?>";
+        return "<?php if(session()->has('errors')): ?>";
     }
 
-    public function compileEndhasflash()
+    public function compileEnderrors()
     {
         return "<?php endif; ?>";
     }
@@ -50,7 +50,8 @@ trait Directives
     public function compileError($key): string
     {
         $key = trim($key, "()'\"");
-        return "<?php if(\$message = flash()->peek('$key')): ?>";
+
+        return "<?php if(\$error = session()->getPeek('$key')): ?>";
     }
 
     public function compileEnderror(): string

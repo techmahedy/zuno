@@ -14,7 +14,7 @@ class MessageBag
      */
     public static function set(string $key, $value): void
     {
-        $_SESSION[$key] = $value;
+        session()->put($key, $value);
     }
 
     /**
@@ -26,7 +26,7 @@ class MessageBag
      */
     public static function flashInput()
     {
-        $_SESSION['input_errors'] = $_POST + $_GET;
+        session()->put('input', $_POST);
     }
 
     /**
@@ -44,12 +44,12 @@ class MessageBag
      */
     public static function old(?string $key = null): ?string
     {
-        $input = $_SESSION['input'] ?? null;
+        $input = session('input') ?? null;
 
         if ($key) {
-            $oldInput = $input[$key] ?? null;
-
-            return $oldInput;
+            $data = session('input');
+            session()->forget('input');
+            return $data[$key] ?? null;
         }
 
         return $input;
@@ -64,7 +64,7 @@ class MessageBag
      */
     public static function has(string $key): bool
     {
-        return isset($_SESSION['input'][$key]);
+        return isset(session('input')[$key]);
     }
 
     /**
@@ -74,7 +74,8 @@ class MessageBag
      */
     public static function clear(): void
     {
-        unset($_SESSION['input']);
+        session()->flushPeek();
+        session()->forget('input');
     }
 
     /**
@@ -84,6 +85,6 @@ class MessageBag
      */
     public static function all(): ?array
     {
-        return $_SESSION['input'] ?? null;
+        return session('input') ?? null;
     }
 }

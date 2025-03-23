@@ -9,13 +9,13 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class CreateMigrationCommand extends Command
 {
-    protected static $defaultName = 'create:migration';
+    protected static $defaultName = 'make:migration';
 
     protected function configure()
     {
         $this
-            ->setName('create:migration')
-            ->setDescription('Creates a new Phinx migration class.')
+            ->setName('make:migration')
+            ->setDescription('Creates a new migration class.')
             ->addArgument('name', InputArgument::REQUIRED, 'The name of the migration class.');
     }
 
@@ -59,21 +59,12 @@ use Zuno\Migration\Migration;
 
 final class {$className} extends Migration
 {
-    /**
-     * Change Method.
-     *
-     * Write your reversible migrations using this method.
-     *
-     * More information on writing migrations is available here:
-     * https://book.cakephp.org/phinx/0/en/migrations.html#the-change-method
-     *
-     * Remember to call "create()" or "update()" and NOT "save()" when working
-     * with the Table class.
-     */
+    // Define the change method, which is used to define the changes to the database schema
     public function change(): void
     {
         \$this->table('{$this->snakeCase($className)}')
-            ->addTimestamps()
+            ->addColumn('created_at', 'timestamp', ['null' => true])
+            ->addColumn('updated_at', 'timestamp', ['null' => true])
             ->create();
     }
 }

@@ -12,6 +12,13 @@ class Session
     protected $data = [];
 
     /**
+     * The session peek data.
+     *
+     * @var array
+     */
+    protected $peek = [];
+
+    /**
      * Flash data key.
      *
      * @var string
@@ -26,6 +33,7 @@ class Session
     public function __construct(?array &$data = [])
     {
         $this->data = &$_SESSION;
+        $this->peek = &$_SESSION;
     }
 
     /**
@@ -38,12 +46,48 @@ class Session
     public function get(string $key, $default = null)
     {
         $value = $this->data[$key] ?? $default;
-        $keys = ['success', 'info', 'errors', 'danger', 'warning', 'primary', 'message', 'input'];
+        $keys = ['success', 'info', 'errors', 'danger', 'warning', 'primary', 'message', 'error'];
         if (in_array($key, $keys)) {
             $this->forget($key);
         }
 
         return $value;
+    }
+
+    /**
+     * Get a session value by key.
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function getPeek(string $key, $default = null)
+    {
+        $value = $this->peek[$key] ?? $default;
+
+        return $value;
+    }
+
+    /**
+     * Put a key-value pair into the session.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return void
+     */
+    public function putPeek(string $key, $value): void
+    {
+        $this->peek[$key] = $value;
+    }
+
+    /**
+     * Remove all session peek data.
+     *
+     * @return void
+     */
+    public function flushPeek(): void
+    {
+        $this->peek = [];
     }
 
     /**

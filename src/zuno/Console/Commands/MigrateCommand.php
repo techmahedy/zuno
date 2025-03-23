@@ -23,8 +23,7 @@ class MigrateCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        // Load Phinx configuration
-        $configPath = base_path() . '/config.php'; // Use base path dynamically
+        $configPath = base_path() . '/config.php';
         if (!file_exists($configPath)) {
             $output->writeln('<error>Phinx configuration file not found at ' . $configPath . '</error>');
             return Command::FAILURE;
