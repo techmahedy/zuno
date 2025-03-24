@@ -97,10 +97,17 @@ class Session
      * @param mixed $value
      * @return void
      */
-    public function put(string $key, $value): void
+    public function put(string|array $key, $value = null): void
     {
-        $this->data[$key] = $value;
+        if (is_array($key)) {
+            foreach ($key as $k => $v) {
+                $this->data[$k] = $v;
+            }
+        } else {
+            $this->data[$key] = $value;
+        }
     }
+
 
     /**
      * Check if a session key exists.

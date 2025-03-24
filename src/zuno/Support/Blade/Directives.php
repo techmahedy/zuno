@@ -51,7 +51,7 @@ trait Directives
     {
         $key = trim($key, "()'\"");
 
-        return "<?php if(\$error = session()->getPeek('$key')): ?>";
+        return "<?php if(\$message = session()->getPeek('$key')): ?>";
     }
 
     public function compileEnderror(): string

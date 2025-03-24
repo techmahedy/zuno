@@ -2,6 +2,8 @@
 
 namespace Zuno\Support\Storage;
 
+use Zuno\Support\File;
+
 class FileSystem
 {
     /**
@@ -23,16 +25,19 @@ class FileSystem
         $this->filePath = $filePath;
         $this->fileName = $fileName;
     }
+
     /**
      * move file in local file system
      *
      * @param string $path
-     * @return boolean
+     * @param File $file
+     * @param string|null $fileName
+     * @return bool
      */
-    public function put(string $path, $file): bool
+    public function put(string $path, File $file, ?string $fileName = null): bool
     {
-        $fileName = $this->getFileName($file);
-        $stream   = fopen($file->getClientOriginalPath(), 'rb'); // Read mode (binary)
+        $fileName = $fileName ?? $this->getFileName($file);
+        $stream = fopen($file->getClientOriginalPath(), 'rb'); // Read mode (binary)
 
         if (is_resource($stream)) {
             $this->writeStream($path, $fileName, $stream);
@@ -60,29 +65,49 @@ class FileSystem
     }
 
     /**
-     * Undocumented function
+     * Writes data from a stream to a file at the specified path.
+     * If the stream size is greater than 50 MB, it chunks the data into 5 MB pieces for efficient writing.
      *
-     * @param string $path
-     * @param string $name
-     * @param [type] $stream
-     * @return void
+     * @param string $path The directory path where the file will be saved.
+     * @param string $name The name of the file to be created.
+     * @param resource $stream The input stream to read data from.
+     * @return bool
      */
-    public function writeStream(string $path, string $name, $stream)
+    public function writeStream(string $path, string $name, $stream): bool
     {
         $realPath = $this->destinationFile($path, $name);
+
+        // Open the output file in write-binary mode
         $outputStream = fopen($realPath, 'wb');
 
-        // Read and write in chunks
-        $chunkSize = 4096; // 4KB per chunk
-        while (! feof($stream)) {
+        // Determine the chunk size based on the stream size
+        $streamSize = $this->getStreamSize($stream);
+
+        // Use 5 MB chunks for files > 50 MB, otherwise 4 KB
+        $chunkSize = ($streamSize > 50 * 1024 * 1024) ? 5 * 1024 * 1024 : 4096;
+
+        while (!feof($stream)) {
             $buffer = fread($stream, $chunkSize);
             fwrite($outputStream, $buffer);
         }
 
-        // Close file streams
         fclose($stream);
         fclose($outputStream);
+
         return true;
+    }
+
+    /**
+     * Retrieves the size of a given stream.
+     *
+     * @param resource $stream The stream resource to get the size of.
+     * @return int The size of the stream in bytes.
+     */
+    private function getStreamSize($stream)
+    {
+        $stat = fstat($stream);
+
+        return $stat['size'];
     }
 
     /**
@@ -132,24 +157,6 @@ class FileSystem
     public function storeageBasePath(): string
     {
         return $this->filePath;
-    }
-
-    /**
-     * Get the contents of a file.
-     *
-     * @param  string  $path
-     * @param  bool  $lock
-     * @return string
-     *
-     * @throws \Zuno\Support\Storage\FileNotFoundException
-     */
-    public function get($path, $lock = false)
-    {
-        if ($this->isFile($path)) {
-            return file_get_contents($path);
-        }
-
-        throw new FileNotFoundException("File does not exist at path {$path}.");
     }
 
     /**

@@ -107,13 +107,24 @@ trait RequestParser
     }
 
     /**
-     * Retrieves the request query string.
+     * Retrieves the request query parameter value by key.
      *
-     * @return string The query string.
+     * @param string|null $key The key to retrieve the query parameter value.
+     * @param mixed $default The default value to return if the key is not found.
+     * @return mixed The value of the query parameter, or the default value if not found.
      */
-    public function query(): ?string
+    public function query(?string $key = null, $default = null): mixed
     {
-        return $this->server->get('QUERY_STRING');
+        // Parse the query string into an associative array
+        $queryString = $this->server->get('QUERY_STRING', '');
+        parse_str($queryString, $queryParams);
+
+        // If a key is provided, return the value, otherwise return all parameters
+        if ($key !== null) {
+            return $queryParams[$key] ?? $default;
+        }
+
+        return $queryParams;
     }
 
     /**

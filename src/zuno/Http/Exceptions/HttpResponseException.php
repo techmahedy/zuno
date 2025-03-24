@@ -3,7 +3,6 @@
 namespace Zuno\Http\Exceptions;
 
 use RuntimeException;
-use Zuno\Http\Response;
 use Throwable;
 
 class HttpResponseException extends RuntimeException

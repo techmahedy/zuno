@@ -5,7 +5,7 @@ namespace Zuno\Support;
 use Zuno\Support\Storage\PublicFileSystem;
 use Zuno\Support\Facades\Storage;
 
-class File
+class File extends \SplFileInfo
 {
     protected array $file;
 
@@ -14,9 +14,24 @@ class File
      *
      * @param array $file The uploaded file's data from the $_FILES array.
      */
-    public function __construct(array $file)
+    public function __construct(\SplFileInfo|string|array $file, bool $checkPath = true)
     {
-        $this->file = $file;
+        if (is_string($file)) {
+            if ($checkPath && !is_file($file)) {
+                throw new \Exception($file);
+            }
+            // Generate a $_FILES-like array from the file path.
+            $this->file = [
+                'name' => basename($file),
+                'type' => mime_content_type($file),
+                'tmp_name' => $file,
+                'error' => UPLOAD_ERR_OK,
+                'size' => filesize($file),
+            ];
+            parent::__construct($file);
+        } else {
+            $this->file = $file;
+        }
     }
 
     /**
@@ -243,5 +258,57 @@ class File
         $relativePath = Storage::getDiskPath('public');
 
         return app(PublicFileSystem::class, [$relativePath, $fileName])->store($path, $this);
+    }
+
+    /**
+     * Checks if the file is readable.
+     *
+     * @return bool True if the file is readable, false otherwise.
+     */
+    public function isReadable(): bool
+    {
+        return is_readable($this->getClientOriginalPath());
+    }
+
+    /**
+     * Gets the last modification time of the uploaded file.
+     *
+     * @return int|false The last modification time as a Unix timestamp, or false on error.
+     */
+    public function getMTime(): int|false
+    {
+        if (!$this->isValid()) {
+            return false;
+        }
+
+        return filemtime($this->getClientOriginalPath());
+    }
+
+    /**
+     * Automatically sets the Last-Modified header according the file modification date.
+     *
+     * @return $this
+     */
+    public function setAutoLastModified(): static
+    {
+        if ($mtime = $this->getMTime()) {
+            // Assuming you have a setLastModified method in your class or a related trait/helper.
+            // If not, you will need to implement it according to your application's
+            // request/response handling. Here's a placeholder example:
+            $this->setLastModifiedHeader($mtime);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Placeholder method to set the Last-Modified header.
+     * Replace this with your actual implementation.
+     *
+     * @param int $timestamp The Unix timestamp of the last modification time.
+     */
+    protected function setLastModifiedHeader(int $timestamp): void
+    {
+        header('Last-Modified: ' . gmdate('D, d M Y H:i:s T', $timestamp));
     }
 }

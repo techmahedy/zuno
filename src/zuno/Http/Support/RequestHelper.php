@@ -2,7 +2,6 @@
 
 namespace Zuno\Http\Support;
 
-use Zuno\Support\Facades\Auth;
 use App\Models\User;
 
 trait RequestHelper
@@ -154,7 +153,7 @@ trait RequestHelper
      */
     public function auth(): ?User
     {
-        return Auth::user() ?? null;
+        return app('auth')->user() ?? null;
     }
 
     /**
@@ -164,16 +163,6 @@ trait RequestHelper
      */
     public function user(): ?User
     {
-        if (isset($_SESSION['user'])) {
-            $user = User::find($_SESSION['user']->id);
-            $reflectionProperty = new \ReflectionProperty(User::class, 'unexposable');
-            $reflectionProperty->setAccessible(true);
-            if ($user) {
-                $user->makeHidden($reflectionProperty->getValue($user));
-                return $user;
-            }
-        }
-
-        return null;
+        return app('auth')->user() ?? null;
     }
 }

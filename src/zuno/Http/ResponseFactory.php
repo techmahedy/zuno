@@ -3,7 +3,11 @@
 namespace Zuno\Http;
 
 use Zuno\Support\Collection;
+use Zuno\Http\Response\Stream\StreamedResponse;
+use Zuno\Http\Response\Stream\StreamedJsonResponse;
+use Zuno\Http\Response\Stream\BinaryFileResponse;
 use Zuno\Http\Response\JsonResponse;
+use Zuno\Http\Exceptions\StreamedResponseException;
 use Zuno\Database\Eloquent\Model;
 use Zuno\Database\Eloquent\Builder;
 
@@ -70,5 +74,121 @@ class ResponseFactory
     public function text(string $content, int $statusCode = 200, array $headers = []): Response
     {
         return app(Response::class)->text($content, $statusCode, $headers);
+    }
+
+    /**
+     * Create a new streamed response instance.
+     *
+     * @param callable $callback
+     * @param int $status
+     * @param array $headers
+     * @return \Zuno\Http\Response\Stream\StreamedResponse
+     */
+    public function stream($callback, $status = 200, array $headers = [])
+    {
+        return new StreamedResponse($callback, $status, $headers);
+    }
+
+    /**
+     * Create a new streamed response instance.
+     *
+     * @param array $data
+     * @param int $status
+     * @param array $headers
+     * @param int $encodingOptions
+     * @return \Zuno\Http\Response\Stream\StreamedJsonResponse
+     */
+    public function streamJson(
+        $data,
+        $status = 200,
+        $headers = [],
+        $encodingOptions = JsonResponse::DEFAULT_ENCODING_OPTIONS
+    ) {
+        return new StreamedJsonResponse($data, $status, $headers, $encodingOptions);
+    }
+
+    /**
+     * Create a new streamed response instance as a file download.
+     *
+     * @param callable $callback
+     * @param string|null $name
+     * @param array $headers
+     * @param string|null $disposition
+     * @return \Zuno\Http\Response\Stream\StreamedResponse
+     * @throws \Zuno\Http\Exceptions\StreamedResponseException
+     */
+    public function streamDownload($callback, $name = null, array $headers = [], $disposition = 'attachment')
+    {
+        $withWrappedException = function () use ($callback) {
+            try {
+                $callback();
+            } catch (\Throwable $e) {
+                throw new StreamedResponseException($e);
+            }
+        };
+
+        $response = new StreamedResponse($withWrappedException, 200, $headers);
+
+        if (! is_null($name)) {
+            $response->headers->set('Content-Disposition', $response->headers->makeDisposition(
+                $disposition,
+                $name,
+                $this->fallbackName($name)
+            ));
+        }
+
+        return $response;
+    }
+
+    /**
+     * Convert the string to ASCII characters that are equivalent to the given name.
+     *
+     * @param  string  $name
+     * @return string
+     */
+    protected function fallbackName($name)
+    {
+        // Remove any non-ASCII characters and replace them with their closest ASCII equivalents
+        $name = iconv('UTF-8', 'ASCII//TRANSLIT', $name);
+
+        // Remove any remaining non-ASCII characters that couldn't be transliterated
+        $name = preg_replace('/[^\x20-\x7E]/', '', $name);
+
+        // Remove any '%' characters
+        $name = str_replace('%', '', $name);
+
+        return $name;
+    }
+
+    /**
+     * Create a new file download response.
+     *
+     * @param \SplFileInfo|string $file
+     * @param string|null $name
+     * @param array $headers
+     * @param string|null $disposition
+     * @return \Zuno\Http\Response\Stream\BinaryFileResponse
+     */
+    public function download($file, $name = null, array $headers = [], $disposition = 'attachment')
+    {
+        $response = new BinaryFileResponse($file, 200, $headers, true, $disposition);
+
+        if (! is_null($name)) {
+            return $response->setContentDisposition($disposition, $name, $this->fallbackName($name));
+        }
+
+        return $response;
+    }
+
+    /**
+     * Return the raw contents of a binary file.
+     *
+     * @param \SplFileInfo|string $file
+     * @param array $headers
+     * @return \Zuno\Http\Response\Stream\BinaryFileResponse
+     */
+    public function file($file, array $headers = [])
+    {
+        return new BinaryFileResponse($file, 200, $headers);
     }
 }

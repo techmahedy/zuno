@@ -3,8 +3,8 @@
 namespace Zuno\Support\Facades;
 
 /**
- * @method static \Zuno\Config\Config encrypt(mixed $payload)
- * @method static \Zuno\Config\Config decrypt(string $payload)
+ * @method static \Zuno\Support\Encryption encrypt(mixed $payload): string
+ * @method static \Zuno\Support\Encryption decrypt(string $payload): string
  * @see \Zuno\Support\Encryption
  */
 use Zuno\Facade\BaseFacade;

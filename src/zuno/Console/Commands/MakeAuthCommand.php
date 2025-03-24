@@ -106,8 +106,8 @@ EOT;
         <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
             <div class="container">
                 <a class="navbar-brand" href="{{ route('home') }}">
-                    <img src="https://laravel.com/img/logomark.min.svg" alt="Laravel Logo" width="40"
-                        height="40">
+                    <img src="{{ enqueue('logo.png') }}" alt="Logo" width="60"
+                        height="60">
                 </a>
                 <div class="d-flex align-items-center gap-3">
                     @guest

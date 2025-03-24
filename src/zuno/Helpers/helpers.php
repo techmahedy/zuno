@@ -3,8 +3,6 @@
 use Zuno\Utilities\Paginator;
 use Zuno\Support\Session;
 use Zuno\Support\Facades\Log;
-use Zuno\Support\Facades\Hash;
-use Zuno\Support\Facades\Auth;
 use Zuno\Support\Facades\Abort;
 use Zuno\Support\Collection;
 use Zuno\Session\MessageBag;
@@ -163,7 +161,7 @@ function session($key = null, $default = null)
  */
 function csrf_token(): ?string
 {
-    return $_SESSION['_token'] ?? null;
+    return request()->session()->token() ?? null;
 }
 
 /**
@@ -173,7 +171,7 @@ function csrf_token(): ?string
  */
 function bcrypt(string $plainText): string
 {
-    return Hash::make($plainText);
+    return app('hash')->make($plainText);
 }
 
 /**
@@ -219,10 +217,6 @@ function route(string $name, mixed $params = []): ?string
  */
 function config(string $key, ?string $default = null): null|string|array
 {
-    // if (app()->runningInConsole()) {
-    //     return Config::get($key) ?? $default;
-    // }
-
     return Config::get($key) ?? $default;
 }
 
@@ -231,9 +225,9 @@ function config(string $key, ?string $default = null): null|string|array
  *
  * @return bool Returns true if the user is logged in, otherwise false.
  */
-function isAuthenticated(): bool
+function is_auth(): bool
 {
-    return Auth::check();
+    return app('auth')->check();
 }
 
 /**
@@ -270,7 +264,10 @@ function base_url(string $path = ''): string
         return rtrim($appUrl, '/') . ($path ? '/' . ltrim($path, '/') : '');
     }
 
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+        (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+        ? 'https' : 'http';
+
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $base = $scheme . '://' . $host;
 
@@ -352,7 +349,7 @@ function enqueue(string $path = '', $secure = null): string
  */
 function abort(int $code, string $message = ''): void
 {
-    Abort::abort($code, $message);
+    app('abort')->abort($code, $message);
 }
 
 /**
@@ -365,29 +362,26 @@ function abort(int $code, string $message = ''): void
  */
 function abort_if(bool $condition, int $code, string $message = ''): void
 {
-    Abort::abortIf($condition, $code, $message);
+    app('abort')->abortIf($condition, $code, $message);
 }
 
 /**
  * Mask a string with a specified number of visible characters at the start and end.
- * 
+ *
  * @param string $string The string to mask
  * @param int $visibleFromStart Number of visible characters from the start of the string
  * @param int $visibleFromEnd Number of visible characters from the end of the string
  * @param string $maskCharacter The character used to mask the string
- * 
+ *
  * @return string The masked string
  */
-function mask_str(string $string, int $visibleFromStart = 1, int $visibleFromEnd = 1, string $maskCharacter = '*'): string
-{
-    $length = strlen($string);
-
-    $maskedLength = $length - $visibleFromEnd;
-
-    $startPart = substr($string, 0, $visibleFromStart);
-    $endPart = substr($string, -$visibleFromEnd);
-
-    return str_pad($startPart, $maskedLength, $maskCharacter, STR_PAD_RIGHT) . $endPart;
+function mask(
+    string $string,
+    int $visibleFromStart = 1,
+    int $visibleFromEnd = 1,
+    string $maskCharacter = '*'
+): string {
+    return app('str')->mask($string, $visibleFromStart, $visibleFromEnd, $maskCharacter);
 }
 
 /**
@@ -398,9 +392,9 @@ function mask_str(string $string, int $visibleFromStart = 1, int $visibleFromEnd
  * @param string $suffix The suffix to append if truncated (default: '...').
  * @return string The truncated string.
  */
-function truncate_str(string $string, int $maxLength, string $suffix = '...'): string
+function truncate(string $string, int $maxLength, string $suffix = '...'): string
 {
-    return (strlen($string) > $maxLength) ? substr($string, 0, $maxLength) . $suffix : $string;
+    return app('str')->truncate($string, $maxLength, $suffix);
 }
 
 /**
@@ -409,9 +403,9 @@ function truncate_str(string $string, int $maxLength, string $suffix = '...'): s
  * @param string $input The camelCase string.
  * @return string The converted snake_case string.
  */
-function camel_to_snake(string $input): string
+function snake(string $input): string
 {
-    return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $input));
+    return app('str')->snake($input);
 }
 
 /**
@@ -420,9 +414,9 @@ function camel_to_snake(string $input): string
  * @param string $input The snake_case string.
  * @return string The converted camelCase string.
  */
-function snake_to_camel(string $input): string
+function camel(string $input): string
 {
-    return lcfirst(str_replace('_', '', ucwords($input, '_')));
+    return app('str')->camel($input);
 }
 
 /**
@@ -431,9 +425,9 @@ function snake_to_camel(string $input): string
  * @param int $length The length of the random string (default: 10).
  * @return string The generated random string.
  */
-function random_str(int $length = 10): string
+function random(int $length = 16): string
 {
-    return substr(str_shuffle(str_repeat('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', $length)), 0, $length);
+    return app('str')->random($length);
 }
 
 /**
@@ -444,8 +438,7 @@ function random_str(int $length = 10): string
  */
 function is_palindrome(string $string): bool
 {
-    $cleaned = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $string));
-    return $cleaned === strrev($cleaned);
+    return app('str')->is_palindrome($string);
 }
 
 /**
@@ -456,7 +449,7 @@ function is_palindrome(string $string): bool
  */
 function count_word(string $string): int
 {
-    return str_word_count($string);
+    return app('str')->count_word($string);
 }
 
 /**
@@ -563,7 +556,7 @@ function collect(array $items = []): Collection
  * @param string $folderPath
  * @return bool
  */
-function delete_folder_recursively(string $folderPath)
+function delete_folder_recursively(string $folderPath): bool
 {
     if (!is_dir($folderPath)) {
         return false;
@@ -581,4 +574,204 @@ function delete_folder_recursively(string $folderPath)
     }
 
     return rmdir($folderPath);
+}
+
+/**
+ * Convert a string to title case (each word capitalized).
+ *
+ * @param string $input The input string.
+ * @return string The title-cased string.
+ *
+ * @example
+ * Str::title("hello world"); // Returns "Hello World"
+ */
+function title(string $input): string
+{
+    return app('str')->title($input);
+}
+
+/**
+ * Generate a URL-friendly slug from a string.
+ *
+ * @param string $input The input string.
+ * @param string $separator The word separator (default: '-').
+ * @return string The generated slug.
+ *
+ * @example
+ * Str::slug("Hello World!"); // Returns "hello-world"
+ */
+function slug(string $input, string $separator = '-'): string
+{
+    return app('str')->slug($input, $separator);
+}
+
+/**
+ * Check if a string contains another string (case-insensitive).
+ *
+ * @param string $haystack The string to search in.
+ * @param string $needle The string to search for.
+ * @return bool True if found, false otherwise.
+ *
+ * @example
+ * Str::contains("Hello World", "world"); // Returns true
+ */
+function contains(string $haystack, string $needle): bool
+{
+    return app('str')->contains($haystack, $needle);
+}
+
+/**
+ * Limit the number of words in a string.
+ *
+ * @param string $string The input string.
+ * @param int $words The maximum number of words.
+ * @param string $end The ending suffix (default: '...').
+ * @return string The truncated string.
+ *
+ * @example
+ * Str::limitWords("This is a test string", 3); // Returns "This is a..."
+ */
+function limit_words(string $string, int $words, string $end = '...'): string
+{
+    return app('str')->limit_words($string, $words, $end);
+}
+
+/**
+ * Remove all whitespace from a string.
+ *
+ * @param string $input The input string.
+ * @return string The string without whitespace.
+ *
+ * @example
+ * Str::removeWhitespace("Hello   World"); // Returns "HelloWorld"
+ */
+function remove_white_space(string $input): string
+{
+    return app('str')->remove_white_space($input);
+}
+
+/**
+ * Generate a UUID v4 string.
+ *
+ * @return string The generated UUID.
+ *
+ * @example
+ * Str::uuid(); // Returns something like "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+ */
+function uuid(): string
+{
+    return app('str')->uuid();
+}
+
+/**
+ * Check if a string starts with another string (case-sensitive).
+ *
+ * @param string $haystack The string to search in.
+ * @param string $needle The string to search for.
+ * @return bool True if found, false otherwise.
+ *
+ * @example
+ * Str::startsWith("Hello World", "Hello"); // Returns true
+ */
+function starts_with(string $haystack, string $needle): bool
+{
+    return app('str')->starts_with($haystack, $needle);
+}
+
+/**
+ * Check if a string ends with another string (case-sensitive).
+ *
+ * @param string $haystack The string to search in.
+ * @param string $needle The string to search for.
+ * @return bool True if found, false otherwise.
+ *
+ * @example
+ * Str::endsWith("Hello World", "World"); // Returns true
+ */
+function ends_with(string $haystack, string $needle): bool
+{
+    return app('str')->ends_with($haystack, $needle);
+}
+
+/**
+ * Convert a string to studly case (StudlyCase).
+ *
+ * @param string $input The input string.
+ * @return string The studly-cased string.
+ *
+ * @example
+ * Str::studly("hello_world"); // Returns "HelloWorld"
+ */
+function studly(string $input): string
+{
+    return app('str')->studly($input);
+}
+
+/**
+ * Reverse a string while preserving multi-byte characters.
+ *
+ * @param string $input The input string.
+ * @return string The reversed string.
+ */
+function reverse(string $input): string
+{
+    return app('str')->reverse($input);
+}
+
+/**
+ * Extract all numeric digits from a string.
+ *
+ * @param string $input The input string.
+ * @return string A string containing only numeric digits.
+ */
+function extract_numbers(string $input): string
+{
+    return app('str')->extract_numbers($input);
+}
+
+/**
+ * Find the longest common substring between two strings.
+ *
+ * @param string $str1 The first string.
+ * @param string $str2 The second string.
+ * @return string The longest common substring.
+ */
+function longest_common_Substring(string $str1, string $str2): string
+{
+    return app('str')->longest_common_Substring($str1, $str2);
+}
+
+/**
+ * Convert a string to leetspeak (1337).
+ *
+ * @param string $input The input string.
+ * @return string The converted leetspeak string.
+ */
+function leet_speak(string $input): string
+{
+    return app('str')->leet_speak($input);
+}
+
+/**
+ * Extract all email addresses from a string.
+ *
+ * @param string $input The input string.
+ * @return array An array of extracted email addresses.
+ */
+function extract_emails(string $input): array
+{
+    return app('str')->extract_emails($input);
+}
+
+/**
+ * Highlight all occurrences of a keyword in a string using HTML tags.
+ *
+ * @param string $input The input string.
+ * @param string $keyword The keyword to highlight.
+ * @param string $tag The HTML tag to wrap the keyword in (default: <strong>).
+ * @return string The modified string with highlighted keywords.
+ */
+function highlight_keyword(string $input, string $keyword, string $tag = 'strong'): string
+{
+    return app('str')->highlight_keyword($input, $keyword, $keyword);
 }

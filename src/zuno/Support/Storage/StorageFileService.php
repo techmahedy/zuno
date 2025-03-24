@@ -22,15 +22,13 @@ class StorageFileService
      */
     public function disk($name = null)
     {
-        if ($name == 'local') {
-            $path = $this->getDiskPath($name);
-            return app(LocalFileSystem::class, [$path]);
-        } else if ($name == 'public') {
-            $path = $this->getDiskPath($name);
-            return app(PublicFileSystem::class, [$path]);
-        }
+        $path = $this->getDiskPath($name);
 
-        throw new DiskNotFoundException("{$name} disk dose not support.");
+        return match ($name) {
+            'local' => app(LocalFileSystem::class, [$path]),
+            'public' => app(PublicFileSystem::class, [$path]),
+            default => throw new DiskNotFoundException("Unsupported {$name}"),
+        };
     }
 
     /**

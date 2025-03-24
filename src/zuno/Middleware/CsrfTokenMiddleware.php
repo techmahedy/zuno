@@ -28,17 +28,15 @@ class CsrfTokenMiddleware implements Middleware
     {
         $token = $request->headers->get('X-CSRF-TOKEN') ?? $request->_token;
 
-        if ($this->isModifyingRequest($request) && empty($token)) {
-            return $this->handleError($request, "Unauthorized, CSRF Token not found");
+        if ($this->isModifyingRequest($request) && !$request->has('_token')) {
+            throw new HttpException(422, "CSRF Token not found");
         }
 
         // if (
-        //     $this->isModifyingRequest($request)
-        //     && (
-        //         !hash_equals($request->session()->token(), $token)
-        //     )
+        //     $this->isModifyingRequest($request) &&
+        //     (!hash_equals($request->session()->token(), $token))
         // ) {
-        //     return $this->handleError($request, "Unauthorized, CSRF Token mismatched");
+        //     throw new HttpException(422, "Unauthorized, CSRF Token mismatched");
         // }
 
         return $next($request);

@@ -4,6 +4,7 @@ namespace Zuno\Providers;
 
 use Zuno\Support\Validation\Sanitizer;
 use Zuno\Support\UrlGenerator;
+use Zuno\Support\StringService;
 use Zuno\Support\Storage\StorageFileService;
 use Zuno\Support\Session;
 use Zuno\Support\Mail\MailService;
@@ -94,6 +95,10 @@ class FacadeServiceProvider extends ServiceProvider
         $this->app->singleton('sanitize', function () {
             return new Sanitizer([], []);
         });
+
+        // Bind the 'str' service to a singleton instance of the StringService class.
+        // This handles string related helper jobs
+        $this->app->singleton('str', StringService::class);
     }
 
     /**

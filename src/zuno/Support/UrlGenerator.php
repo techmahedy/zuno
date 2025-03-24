@@ -108,11 +108,11 @@ class UrlGenerator
      * Generate a URL for a named route.
      *
      * @param string $name The route name.
-     * @param array $parameters Route parameters.
+     * @param array|string $parameters Route parameters.
      * @param bool|null $secure Whether to force HTTPS.
      * @return string The route URL.
      */
-    public function route($name, array $parameters = [], $secure = null)
+    public function route($name, array|string $parameters = [], $secure = null)
     {
         $path = app('route')->route($name, $parameters);
 
