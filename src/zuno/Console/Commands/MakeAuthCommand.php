@@ -114,7 +114,7 @@ EOT;
                         <a href="{{ route('login') }}" class="btn btn-light-custom">Login</a>
                         <a href="{{ route('register') }}" class="btn btn-light-custom">Register</a>
                     @else
-                        <a href="{{ route('dashboard') }}" class="btn btn-light-custom">Home</a>
+                        <a href="{{ route('dashboard') }}" class="btn btn-light-custom">Dashboard</a>
                         <div class="dropdown">
                             <button class="btn btn-light-custom dropdown-toggle" type="button" id="dropdownMenuButton"
                                 data-bs-toggle="dropdown" aria-expanded="false">

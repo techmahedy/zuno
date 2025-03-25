@@ -11,6 +11,7 @@
 
 namespace Zuno\Http\Response;
 
+use Zuno\Utilities\CookieUpdater;
 use Zuno\Http\Response\HeaderUtils;
 
 /**
@@ -38,8 +39,8 @@ class Cookie
     private bool $secureDefault = false;
 
     private const RESERVED_CHARS_LIST = "=,; \t\r\n\v\f";
-    private const RESERVED_CHARS_FROM = ['=', ',', ';', ' ', "\t", "\r", "\n", "\v", "\f"];
-    private const RESERVED_CHARS_TO = ['%3D', '%2C', '%3B', '%20', '%09', '%0D', '%0A', '%0B', '%0C'];
+    public const RESERVED_CHARS_FROM = ['=', ',', ';', ' ', "\t", "\r", "\n", "\v", "\f"];
+    public const RESERVED_CHARS_TO = ['%3D', '%2C', '%3B', '%20', '%09', '%0D', '%0A', '%0B', '%0C'];
 
     /**
      * Creates cookie from raw header string.
@@ -427,5 +428,11 @@ class Cookie
     public function setSecureDefault(bool $default): void
     {
         $this->secureDefault = $default;
+    }
+
+    // Zuno created this class to modify existing cookie fluently
+    public function modify(): CookieUpdater
+    {
+        return new CookieUpdater($this);
     }
 }

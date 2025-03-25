@@ -4,6 +4,7 @@ use Zuno\Utilities\Paginator;
 use Zuno\Support\Session;
 use Zuno\Support\Facades\Log;
 use Zuno\Support\Facades\Abort;
+use Zuno\Support\CookieJar;
 use Zuno\Support\Collection;
 use Zuno\Session\MessageBag;
 use Zuno\Http\Response\RedirectResponse;
@@ -67,6 +68,16 @@ function app($abstract = null, array $parameters = [])
 function request(): Request
 {
     return app(Request::class);
+}
+
+/**
+ * Creates a new cookie instance to handle cookie.
+ *
+ * @return CookieJar
+ */
+function cookie(): CookieJar
+{
+    return app('cookie');
 }
 
 /**

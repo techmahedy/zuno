@@ -21,7 +21,7 @@ class Application extends Container
     /**
      * The current version of the Zuno framework.
      */
-    const VERSION = '5.5';
+    const VERSION = '5.7';
 
     protected $basePath;
     protected $hasBeenBootstrapped = false;

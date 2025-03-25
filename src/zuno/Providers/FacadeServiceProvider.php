@@ -10,6 +10,7 @@ use Zuno\Support\Session;
 use Zuno\Support\Mail\MailService;
 use Zuno\Support\LoggerService;
 use Zuno\Support\Encryption;
+use Zuno\Support\CookieJar;
 use Zuno\Http\Support\RequestAbortion;
 use Zuno\Http\Response\RedirectResponse;
 use Zuno\Http\Response;
@@ -99,6 +100,10 @@ class FacadeServiceProvider extends ServiceProvider
         // Bind the 'str' service to a singleton instance of the StringService class.
         // This handles string related helper jobs
         $this->app->singleton('str', StringService::class);
+
+        // Bind the 'cookie' service to a singleton instance of the CookieJar class.
+        // This handles cookie related jobs
+        $this->app->singleton('cookie', CookieJar::class);
     }
 
     /**
