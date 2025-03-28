@@ -379,7 +379,7 @@ class Router extends Kernel
      * @throws \Exception
      * @return Response
      */
-    public function resolve(Application $app, Request $request)
+    public function resolve(Application $app, Request $request): Response
     {
         $currentMiddleware = $this->getCurrentRouteMiddleware($request);
         if ($currentMiddleware) $this->applyRouteMiddleware($currentMiddleware);
@@ -400,28 +400,42 @@ class Router extends Kernel
 
             $response = app(Response::class);
             if (!($result instanceof Response)) {
-                if ($result instanceof Collection) {
-                    $result = json_encode($result->toArray());
-                    $response->headers->set('Content-Type', 'application/json');
-                } elseif (is_array($result)) {
-                    $result = json_encode($result);
-                    $response->headers->set('Content-Type', 'application/json');
-                } elseif ($result instanceof Model) {
-                    $result = json_encode($result);
-                    $response->headers->set('Content-Type', 'application/json');
-                } elseif ($result instanceof Builder) {
-                    $result = json_encode($result);
-                    $response->headers->set('Content-Type', 'application/json');
-                }
-
-                $response->setBody($result);
-
-                return $response;
+                return $this->getResolutionResponse($result, $response);
             }
 
             return $result;
         };
         $response = $this->handle($request, $finalHandler);
+
+        return $response;
+    }
+
+    /**
+     * Converts mixed data into a JSON response.
+     * - Objects (any class) are JSON-encoded.
+     * - Arrays, Collections, Models, and Builders are JSON-encoded.
+     * - Non-JSON types (strings, numbers, etc.) are returned as-is.
+     * @param $response
+     * @param mixed $result
+     * @return Response
+     */
+    private function getResolutionResponse($result, $response): Response
+    {
+        if ($result instanceof Collection) {
+            $result = json_encode($result->toArray());
+            $response->headers->set('Content-Type', 'application/json');
+        } elseif (is_array($result)) {
+            $result = json_encode($result);
+            $response->headers->set('Content-Type', 'application/json');
+        } elseif ($result instanceof Model) {
+            $result = json_encode($result);
+            $response->headers->set('Content-Type', 'application/json');
+        } elseif ($result instanceof Builder) {
+            $result = json_encode($result);
+            $response->headers->set('Content-Type', 'application/json');
+        }
+
+        $response->setBody($result);
 
         return $response;
     }

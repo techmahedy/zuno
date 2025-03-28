@@ -49,119 +49,142 @@ class UrlGenerator
     /**
      * Create a new UrlGenerator instance.
      *
-     * @param string $baseUrl The base URL for generating URLs.
-     * @param bool $secure Whether to use HTTPS by default.
+     * @param string|null $baseUrl The base URL for generating URLs
+     * @param bool $secure Whether to use HTTPS by default
      */
-    public function __construct($baseUrl = '/', $secure = false)
+    public function __construct($baseUrl = null, $secure = false)
     {
-        $this->baseUrl = rtrim($baseUrl, '/');
+        $this->baseUrl = $baseUrl ? rtrim($baseUrl, '/') : $this->determineBaseUrl();
         $this->secure = $secure;
+    }
+
+    /**
+     * Determine the base URL to use.
+     *
+     * @return string
+     */
+    protected function determineBaseUrl()
+    {
+        // Try config first
+        if ($url = config('app.url')) {
+            return rtrim($url, '/');
+        }
+
+        // Fall back to current request
+        if (function_exists('request') && request()) {
+            return rtrim(request()->host('host'), '/');
+        }
+
+        // Final fallback
+        return '';
     }
 
     /**
      * Generate a full URL for the given path.
      *
-     * @param string $path The path to append to the base URL.
-     * @param bool|null $secure Whether to force HTTPS. If null, the default secure flag is used.
-     * @return string The fully generated URL.
+     * @param string $path The path to append
+     * @param bool|null $secure Whether to force HTTPS
+     * @return string
      */
     public function enqueue($path = '/', $secure = null)
     {
-        $secure = $secure ?? $this->secure;
-
-        $scheme = $secure ? 'https://' : 'http://';
-
-        // If the base URL already starts with "http://" or "https://", remove the scheme
-        // to avoid duplicating it in the final URL.
-        if (strpos($this->baseUrl, 'http://') === 0 || strpos($this->baseUrl, 'https://') === 0) {
-            $this->baseUrl = preg_replace('#^https?://#', '', $this->baseUrl);
-        }
-
-        // Construct the full URL by combining the scheme, base URL, and path.
-        // The path is trimmed of leading slashes to ensure proper formatting.
-        return $scheme . $this->baseUrl . '/' . ltrim($path, '/');
+        return $this->to($path, [], $secure)->make();
     }
 
     /**
      * Generate a full URL without query parameters.
      *
-     * @return string The URL without query parameters.
+     * @return string
      */
     public function full()
     {
-        return base_url() . request()->uri();
+        return $this->to(request()->uri())->make();
     }
 
     /**
      * Get the current URL without query parameters.
      *
-     * @return string The current URL without query parameters.
+     * @return string
      */
     public function current()
     {
-        $fullUrl = $this->full();
+        $path = parse_url(request()->uri(), PHP_URL_PATH) ?: '/';
 
-        return strtok($fullUrl, '?');
+        return $this->to($path)->make();
     }
 
     /**
      * Generate a URL for a named route.
      *
-     * @param string $name The route name.
-     * @param array|string $parameters Route parameters.
-     * @param bool|null $secure Whether to force HTTPS.
-     * @return string The route URL.
+     * @param string $name The route name
+     * @param array|string $parameters Route parameters
+     * @param bool|null $secure Whether to force HTTPS
+     * @return string
      */
-    public function route($name, array|string $parameters = [], $secure = null)
+    public function route($name, $parameters = [], $secure = null)
     {
         $path = app('route')->route($name, $parameters);
-
         return $this->enqueue($path, $secure);
     }
+
     /**
-     * Set the base path for the URL.
+     * Set the path and optional parameters.
      *
-     * @param string $path The path to append to the base URL.
-     * @return self
+     * @param string $path
+     * @param array|string $parameters
+     * @param bool|null $secure
+     * @return $this
      */
-    public function to($path = '/')
+    public function to($path = '/', $parameters = [], $secure = null)
     {
         $this->path = ltrim($path, '/');
 
+        if (!is_null($secure)) {
+            $this->secure = $secure;
+        }
+
+        if (!empty($parameters)) {
+            $this->withQuery($parameters);
+        }
+
         return $this;
     }
 
     /**
-     * Add query parameters to the URL.
+     * Add query parameters.
      *
-     * @param array $query An associative array of query parameters.
-     * @return self
+     * @param string|array $query
+     * @return $this
      */
-    public function withQuery(array $query = [])
+    public function withQuery($query = [])
     {
-        $this->query = array_merge($this->query, $query);
+        if (is_string($query)) {
+            parse_str($query, $parsedQuery);
+            $this->query = array_merge($this->query, $parsedQuery);
+        } elseif (is_array($query)) {
+            $this->query = array_merge($this->query, $query);
+        }
 
         return $this;
     }
 
     /**
-     * Add a signature to the URL.
+     * Add a signature.
      *
-     * @param int $expiration Expiration time in seconds.
-     * @return self
+     * @param int $expiration
+     * @return $this
      */
     public function withSignature($expiration = 3600)
     {
         $this->expiration = $expiration;
-
         return $this;
     }
 
     /**
-     * Add a fragment to the URL.
+     * Add a fragment.
      *
-     * @param string $fragment The fragment to append (e.g., "#section").
-     * @return self
+     * @param string $fragment
+     * @return $this
      */
     public function withFragment($fragment = '')
     {
@@ -172,20 +195,22 @@ class UrlGenerator
     /**
      * Generate the final URL.
      *
-     * @return string The fully generated URL.
+     * @return string
      */
     public function make()
     {
         $scheme = $this->secure ? 'https://' : 'http://';
+        $baseUrl = preg_replace('#^https?://#', '', $this->baseUrl);
 
-        if (strpos($this->baseUrl, 'http://') === 0 || strpos($this->baseUrl, 'https://') === 0) {
-            $this->baseUrl = preg_replace('#^https?://#', '', $this->baseUrl);
+        // Ensure we have a base URL
+        if (empty($baseUrl)) {
+            $baseUrl = function_exists('request') ? request()->host('host') : 'localhost';
         }
 
-        $url = $scheme . $this->baseUrl . '/' . $this->path;
+        $url = $scheme . $baseUrl . '/' . ltrim($this->path, '/');
 
+        // Add query parameters
         $queryParameters = $this->query;
-
         if ($this->expiration > 0) {
             $queryParameters['expires'] = time() + $this->expiration;
             $queryParameters['signature'] = $this->createSignature($queryParameters);
@@ -195,6 +220,7 @@ class UrlGenerator
             $url .= '?' . http_build_query($queryParameters);
         }
 
+        // Add fragment
         if (!empty($this->fragment)) {
             $url .= '#' . $this->fragment;
         }
@@ -205,40 +231,36 @@ class UrlGenerator
     /**
      * Generate a signed URL.
      *
-     * @param string $path The base path.
-     * @param array $parameters Query parameters.
-     * @param int $expiration Expiration time in seconds.
-     * @param bool|null $secure Whether to force HTTPS.
-     * @return string The signed URL.
+     * @param string $path
+     * @param array $parameters
+     * @param int $expiration
+     * @param bool|null $secure
+     * @return string
      */
     public function signed($path = '/', array $parameters = [], $expiration = 3600, $secure = null)
     {
-        $url = $this->enqueue($path, $secure);
-
-        $parameters['expires'] = time() + $expiration;
-        $parameters['signature'] = $this->createSignature($parameters);
-
-        return $url . '?' . http_build_query($parameters);
+        return $this->to($path, $parameters, $secure)
+            ->withSignature($expiration)
+            ->make();
     }
 
     /**
-     * Create a signature for signed URLs.
+     * Create a signature.
      *
-     * @param array $parameters The parameters to sign.
-     * @return string The signature.
+     * @param array $parameters
+     * @return string
      */
     protected function createSignature(array $parameters)
     {
         $secret = config('app.key');
-
         return hash_hmac('sha256', http_build_query($parameters), $secret);
     }
 
     /**
-     * Check if a URL is valid.
+     * Validate a URL.
      *
-     * @param string $url The URL to validate.
-     * @return bool True if the URL is valid, false otherwise.
+     * @param string $url
+     * @return bool
      */
     public function isValid(string $url): bool
     {
@@ -248,7 +270,7 @@ class UrlGenerator
     /**
      * Get the base URL.
      *
-     * @return string The base URL.
+     * @return string
      */
     public function base()
     {
@@ -256,15 +278,14 @@ class UrlGenerator
     }
 
     /**
-     * Set whether to use HTTPS by default.
+     * Set HTTPS preference.
      *
-     * @param bool $secure Whether to use HTTPS.
-     * @return self
+     * @param bool $secure
+     * @return $this
      */
     public function setSecure(bool $secure)
     {
         $this->secure = $secure;
-
         return $this;
     }
 }

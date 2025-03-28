@@ -14,6 +14,7 @@ use Zuno\Http\Request;
 use Zuno\Http\Controllers\Controller;
 use Zuno\DI\Container;
 use Zuno\Config\Config;
+use Zuno\Support\UrlGenerator;
 
 /**
  * Gets an environment variable from available sources, and provides emulation
@@ -78,6 +79,25 @@ function request(): Request
 function cookie(): CookieJar
 {
     return app('cookie');
+}
+
+/**
+ * Generate a url for the application.
+ *
+ * @param  string|null  $path
+ * @param  mixed  $parameters
+ * @param  bool|null  $secure
+ * @return ($path is null ? \Zuno\Support\UrlGenerator : string)
+ */
+function url($path = null, $parameters = [], $secure = null)
+{
+    $urlGenerator = app(UrlGenerator::class);
+
+    if (is_null($path)) {
+        return $urlGenerator;
+    }
+
+    return $urlGenerator->to($path, $parameters, $secure)->make();
 }
 
 /**

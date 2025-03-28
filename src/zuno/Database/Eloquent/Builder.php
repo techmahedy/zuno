@@ -74,6 +74,12 @@ class Builder
     protected int $rowPerPage;
 
     /**
+     * @var array
+     * Holds the relationships to be eager loaded
+     */
+    protected array $eagerLoad = [];
+
+    /**
      * @param PDO $pdo
      * @param string $table
      * @param string $modelClass
@@ -183,6 +189,7 @@ class Builder
      */
     public function toSql(): string
     {
+
         $sql = 'SELECT ';
 
         // Handle SELECT clause
@@ -215,7 +222,12 @@ class Builder
         if (!empty($this->conditions)) {
             $conditionStrings = [];
             foreach ($this->conditions as $condition) {
-                $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
+                if ($condition[2] === 'IN') {
+                    // Handle IN condition specially
+                    $conditionStrings[] = "{$condition[1]} {$condition[2]} {$condition[4]}";
+                } else {
+                    $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
+                }
             }
             $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
         }
@@ -291,14 +303,296 @@ class Builder
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $models = array_map(fn($item) => new $this->modelClass($item), $results);
 
-            return new Collection($this->modelClass, $models);
+            $collection = new Collection($this->modelClass, $models);
+
+            // Eager load relationships if any
+            if (!empty($this->eagerLoad)) {
+                $this->eagerLoadRelations($collection);
+            }
+
+            return $collection;
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
         }
     }
 
     /**
+     * Eager load the relationships for the collection
+     *
+     * @param Collection $collection
+     * @return void
+     */
+    protected function eagerLoadRelations(Collection $collection)
+    {
+        foreach ($this->eagerLoad as $relation => $constraint) {
+            $models = $collection->all();
+            $firstModel = $models[0] ?? null;
+
+            if (!$firstModel || !method_exists($firstModel, $relation)) {
+                continue;
+            }
+
+            // Initialize relationship to get metadata
+            $firstModel->$relation();
+            $relationType = $firstModel->getLastRelationType();
+            $relatedModel = $firstModel->getLastRelatedModel();
+            $foreignKey = $firstModel->getLastForeignKey();
+            $localKey = $firstModel->getLastLocalKey();
+
+            // Gather all keys to load
+            $keys = array_unique(array_filter(array_map(
+                fn($model) => $model->$localKey,
+                $models
+            )));
+
+            if (empty($keys)) {
+                foreach ($models as $model) {
+                    $model->setRelation(
+                        $relation,
+                        $relationType === 'oneToOne' ? null : new Collection($relatedModel, [])
+                    );
+                }
+                continue;
+            }
+
+            // Create fresh query
+            $query = (new $relatedModel)->query()
+                ->whereIn($foreignKey, $keys);
+
+            if (is_callable($constraint)) {
+                $constraint($query);
+            }
+
+            // Get results as array of models (not Collection)
+            $results = $query->get()->all(); // Changed from toArray()
+            $grouped = [];
+
+            foreach ($results as $result) {
+                // Access attribute properly whether array or object
+                $key = is_array($result)
+                    ? $result[$foreignKey]
+                    : $result->$foreignKey;
+
+                if ($relationType === 'oneToOne') {
+                    $grouped[$key] = $result;
+                } else {
+                    if (!isset($grouped[$key])) {
+                        $grouped[$key] = [];
+                    }
+                    $grouped[$key][] = $result;
+                }
+            }
+
+            // Attach relations to each model
+            foreach ($models as $model) {
+                $key = $model->$localKey;
+                $model->setRelation(
+                    $relation,
+                    isset($grouped[$key])
+                        ? ($relationType === 'oneToOne'
+                            ? $grouped[$key]
+                            : new Collection($relatedModel, $grouped[$key]))
+                        : ($relationType === 'oneToOne'
+                            ? null
+                            : new Collection($relatedModel, []))
+                );
+            }
+        }
+    }
+
+    public function getQuery()
+    {
+        return $this;
+    }
+
+    // Add this to Builder.php
+    public function getModel()
+    {
+        return app($this->modelClass);
+    }
+
+    /**
+     * Add a WHERE IN condition
+     *
+     * @param string $field
+     * @param array $values
+     * @return self
+     */
+    public function whereIn(string $field, array $values): self
+    {
+        if (empty($values)) {
+            // If no values provided, make sure no results are returned
+            $this->where($field, '=', 'NULL');
+            return $this;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($values), '?'));
+        $this->conditions[] = ['AND', $field, 'IN', $values, "($placeholders)"];
+        return $this;
+    }
+
+    /**
+     * Add a OR WHERE IN condition
+     *
+     * @param string $field
+     * @param array $values
+     * @return self
+     */
+    public function orWhereIn(string $field, array $values): self
+    {
+        if (empty($values)) {
+            // If no values provided, make sure no results are returned
+            $this->orWhere($field, '=', 'NULL');
+            return $this;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($values), '?'));
+        $this->conditions[] = ['OR', $field, 'IN', $values, "($placeholders)"];
+        return $this;
+    }
+
+    /**
+     * Load a specific relation for the collection
+     *
+     * @param Collection $collection
+     * @param string $relation
+     * @return void
+     */
+    protected function loadRelation(Collection $collection, string $relation, $constraint = null)
+    {
+        $models = $collection->all();
+        $firstModel = $models[0] ?? null;
+
+        if (!$firstModel || !method_exists($firstModel, $relation)) {
+            return;
+        }
+
+        // Initialize the relationship to get metadata
+        $firstModel->$relation();
+
+        $relationType = $firstModel->getLastRelationType();
+        $relatedModel = $firstModel->getLastRelatedModel();
+        $foreignKey = $firstModel->getLastForeignKey();
+        $localKey = $firstModel->getLastLocalKey();
+
+        // Get all keys we need to load
+        $keys = array_map(fn($model) => $model->$localKey, $models);
+        $keys = array_unique($keys);
+
+        // Create query for related models
+        $query = (new $relatedModel)->query()
+            ->whereIn($foreignKey, $keys);
+
+        // Apply constraints if provided
+        if (is_callable($constraint)) {
+            $constraint($query);
+        }
+
+        // Get results and organize them
+        $results = $query->get();
+
+        $grouped = [];
+        foreach ($results as $result) {
+            if ($relationType === 'oneToOne') {
+                $grouped[$result->$foreignKey] = $result;
+            } else {
+                $grouped[$result->$foreignKey][] = $result;
+            }
+        }
+
+        // Assign relations to each model
+        foreach ($models as $model) {
+            $key = $model->$localKey;
+            if (isset($grouped[$key])) {
+                $model->setRelation(
+                    $relation,
+                    $relationType === 'oneToOne'
+                        ? $grouped[$key]
+                        : new Collection($relatedModel, $grouped[$key])
+                );
+            }
+        }
+    }
+
+    /**
+     * Load one-to-one relationships
+     *
+     * @param array $models
+     * @param string $relation
+     * @param string $relatedModel
+     * @param string $foreignKey
+     * @param string $localKey
+     * @return void
+     */
+    protected function loadOneToOne(array $models, string $relation, string $relatedModel, string $foreignKey, string $localKey): void
+    {
+        $localKeys = array_map(fn($model) => $model->$localKey, $models);
+        $relatedModels = $relatedModel::query()
+            ->whereIn($foreignKey, $localKeys)
+            ->get()
+            ->keyBy($foreignKey);
+
+        foreach ($models as $model) {
+            $key = $model->$localKey;
+            if (isset($relatedModels[$key])) {
+                $model->setRelation($relation, $relatedModels[$key]);
+            }
+        }
+    }
+
+    /**
+     * Load one-to-many relationships
+     *
+     * @param array $models
+     * @param string $relation
+     * @param string $relatedModel
+     * @param string $foreignKey
+     * @param string $localKey
+     * @return void
+     */
+    protected function loadOneToMany(array $models, string $relation, string $relatedModel, string $foreignKey, string $localKey): void
+    {
+        $localKeys = array_map(fn($model) => $model->$localKey, $models);
+        $relatedModels = $relatedModel::query()
+            ->whereIn($foreignKey, $localKeys)
+            ->get()
+            ->getItemsGroupedBy($foreignKey);
+
+        foreach ($models as $model) {
+            $key = $model->$localKey;
+            if (isset($relatedModels[$key])) {
+                $model->setRelation($relation, new Collection($relatedModel, $relatedModels[$key]));
+            }
+        }
+    }
+
+    /**
+     * Add a relationship to be eager loaded
+     *
+     * @param string $relation
+     * @return self
+     */
+    public function embed($relation, $callback = null)
+    {
+        if (is_string($relation)) {
+            $relation = [$relation => $callback];
+        }
+
+        foreach ($relation as $name => $constraint) {
+            $this->eagerLoad[$name] = $constraint;
+        }
+
+        return $this;
+    }
+
+    /**
      * Execute the query and return an array of arrays.
+     *
+     * @return array
+     * @throws PDOException
+     */
+    /**
+     * Execute the query and return an array of arrays (for pagination).
      *
      * @return array
      * @throws PDOException
@@ -310,8 +604,16 @@ class Builder
             $this->bindValues($stmt);
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $models = array_map(fn($item) => new $this->modelClass($item), $results);
 
-            return array_map(fn($item) => new $this->modelClass($item), $results);
+            $collection = new Collection($this->modelClass, $models);
+
+            // Eager load relationships if any (same as in get())
+            if (!empty($this->eagerLoad)) {
+                $this->eagerLoadRelations($collection);
+            }
+
+            return $collection->all();
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
         }
@@ -420,10 +722,10 @@ class Builder
      * @param int $page Current page number.
      * @return array
      */
-    public function paginate(int $page = 1): array
+    public function paginate(?int $perPage = null): array
     {
         $page = request()->page ?? 1;
-        $perPage = $this->rowPerPage;
+        $perPage = $perPage ?? $this->rowPerPage;
 
         if (!is_int($perPage) || $perPage <= 0) {
             $perPage = 15;
@@ -467,8 +769,16 @@ class Builder
      */
     protected function bindValues(PDOStatement $stmt): void
     {
-        foreach ($this->conditions as $index => $condition) {
-            $stmt->bindValue($index + 1, $condition[3], $this->getPdoParamType($condition[3]));
+        $index = 1;
+        foreach ($this->conditions as $condition) {
+            if ($condition[2] === 'IN') {
+                // For IN conditions, bind all values in the array
+                foreach ($condition[3] as $value) {
+                    $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
+                }
+            } else {
+                $stmt->bindValue($index++, $condition[3], $this->getPdoParamType($condition[3]));
+            }
         }
     }
 

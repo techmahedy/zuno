@@ -17,7 +17,7 @@ trait QueryCollection
     /**
      * Creates and returns a new query builder instance for the model.
      *
-     * @return Builder A new query builder instance.
+     * @return \Zuno\Database\Eloquent\Builder
      */
     public static function query(): Builder
     {

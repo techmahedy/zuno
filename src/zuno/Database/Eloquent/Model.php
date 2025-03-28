@@ -2,6 +2,7 @@
 
 namespace Zuno\Database\Eloquent;
 
+use Zuno\Support\Collection;
 use Zuno\Database\Eloquent\Query\QueryCollection;
 use Zuno\Database\Contracts\Support\Jsonable;
 use Stringable;
@@ -67,6 +68,35 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      */
     protected $timeStamps = true;
 
+    /**
+     * @var array
+     * Holds the loaded relationships
+     */
+    protected $relations = [];
+
+    /**
+     * @var string
+     * The last relation type that was set
+     */
+    protected $lastRelationType;
+
+    /**
+     * @var string
+     * The last related model that was set
+     */
+    protected $lastRelatedModel;
+
+    /**
+     * @var string
+     * The last foreign key that was set
+     */
+    protected $lastForeignKey;
+
+    /**
+     * @var string
+     * The last local key that was set
+     */
+    protected $lastLocalKey;
 
     /**
      * Model constructor.
@@ -93,7 +123,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     {
         $className = get_class($this);
         $className = substr($className, strrpos($className, '\\') + 1);
-        return strtolower($className) . 's';
+        return strtolower($className);
     }
 
     /**
@@ -118,17 +148,6 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     protected function sanitize($value)
     {
         return $value;
-    }
-
-    /**
-     * Magic getter for accessing model attributes.
-     *
-     * @param string $name The attribute name.
-     * @return mixed The attribute value or null if it doesn't exist.
-     */
-    public function __get($name)
-    {
-        return $this->attributes[$name] ?? null;
     }
 
     /**
@@ -247,5 +266,160 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
         return static::query()
             ->where($this->primaryKey, '=', $this->attributes[$this->primaryKey])
             ->delete();
+    }
+
+    /**
+     * @param string $related
+     * @param string $foreignKey
+     * @param string $localKey
+     *
+     * @return mixed
+     */
+    public function oneToOne(string $related, string $foreignKey, string $localKey)
+    {
+        $this->lastRelationType = 'oneToOne';
+        $this->lastRelatedModel = $related;
+        $this->lastForeignKey = $foreignKey;
+        $this->lastLocalKey = $localKey;
+
+        $relatedInstance = app($related);
+        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+    }
+
+    /**
+     * @param string $related
+     * @param string $foreignKey
+     * @param string $localKey
+     * 
+     * @return mixed
+     */
+    public function oneToMany(string $related, string $foreignKey, string $localKey)
+    {
+        $this->lastRelationType = 'oneToMany';
+        $this->lastRelatedModel = $related;
+        $this->lastForeignKey = $foreignKey;
+        $this->lastLocalKey = $localKey;
+
+        $relatedInstance = app($related);
+        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+    }
+
+    /**
+     * Get the last relation type
+     *
+     * @return string
+     */
+    public function getLastRelationType(): string
+    {
+        return $this->lastRelationType;
+    }
+
+    /**
+     * Get the last related model
+     *
+     * @return string
+     */
+    public function getLastRelatedModel(): string
+    {
+        return $this->lastRelatedModel;
+    }
+
+    /**
+     * Get the last foreign key
+     *
+     * @return string
+     */
+    public function getLastForeignKey(): string
+    {
+        return $this->lastForeignKey;
+    }
+
+    /**
+     * Get the last local key
+     *
+     * @return string
+     */
+    public function getLastLocalKey(): string
+    {
+        return $this->lastLocalKey;
+    }
+
+    /**
+     * Set a relationship value
+     *
+     * @param string $relation
+     * @param mixed $value
+     */
+    public function setRelation(string $relation, $value): self
+    {
+        $this->relations[$relation] = $value;
+        return $this;
+    }
+
+    /**
+     * Get a relationship value
+     *
+     * @param string $relation
+     * @return mixed
+     */
+    public function getRelation(string $relation)
+    {
+        return $this->relations[$relation] ?? null;
+    }
+
+    /**
+     * Magic getter for accessing model attributes and relationships
+     *
+     * @param string $name
+     * @return mixed
+     */
+    public function __get($name)
+    {
+        // Return relation if already loaded
+        if (array_key_exists($name, $this->relations)) {
+            return $this->relations[$name];
+        }
+
+        // Check if it's a relationship method
+        if (method_exists($this, $name)) {
+            $relation = $this->$name();
+
+            // If it's a Builder instance (for eager loading or direct access)
+            if ($relation instanceof Builder) {
+                $relationType = $this->getLastRelationType();
+
+                if ($relationType === 'oneToOne') {
+                    $result = $relation->first();
+                    $this->setRelation($name, $result);
+                    return $result;
+                } elseif ($relationType === 'oneToMany') {
+                    $results = $relation->get();
+                    $this->setRelation($name, $results);
+                    return $results;
+                }
+            }
+
+            return $relation;
+        }
+
+        return $this->attributes[$name] ?? null;
+    }
+
+    /**
+     * Convert collection to array
+     * @return array
+     */
+    public function toArray(): array
+    {
+        $attributes = $this->makeVisible();
+
+        // Include loaded relationships
+        foreach ($this->relations as $key => $relation) {
+            $attributes[$key] = $relation instanceof Model
+                ? $relation->toArray()
+                : ($relation instanceof Collection ? $relation->toArray() : $relation);
+        }
+
+        return $attributes;
     }
 }

@@ -49,8 +49,7 @@
   },
   "suggest": {
     "ext-pdo": "Required to use all database features.",
-    "fakerphp/faker": "Required to use the eloquent factory builder (^1.9.1).",
-    "mockery/mockery": "Required to use mocking (^1.6)."
+    "fakerphp/faker": "Required to use the eloquent factory builder (^1.9.1)."
   },
   "config": {
     "sort-packages": true,
